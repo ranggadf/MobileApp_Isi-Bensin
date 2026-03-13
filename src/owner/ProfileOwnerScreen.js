@@ -16,10 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
-import axios from "axios";
 import OwnerBottomNav from "../component/OwnerBottomNav";
-
-/* ================= AXIOS CONFIG ================= */
 import axiosInstance from "../api/AxiosInstance";
 
 export default function ProfileOwnerScreen() {
@@ -36,59 +33,58 @@ export default function ProfileOwnerScreen() {
   const [longitude, setLongitude] = useState(null);
   const [foto, setFoto] = useState(null);
 
+  const imageUrl =
+    foto?.uri
+      ? foto.uri
+      : foto
+      ? `http://192.168.1.11:8000/storage/${foto}`
+      : null;
+
   const [loadingLokasi, setLoadingLokasi] = useState(false);
 
-  /* ================= LOAD DATA ================= */
   useEffect(() => {
     loadOwner();
     loadWarung();
   }, []);
 
- const loadOwner = async () => {
-  try {
-    const res = await axiosInstance.get("/user");
-
-    console.log("DATA USER:", res.data);
-
-    const user = res.data.data ? res.data.data : res.data;
-
-    setOwner(user);
-  } catch (error) {
-    console.log("Gagal ambil data owner");
-  }
-};
+  const loadOwner = async () => {
+    try {
+      const res = await axiosInstance.get("/user");
+      const user = res.data.data ? res.data.data : res.data;
+      setOwner(user);
+    } catch (error) {
+      console.log("Gagal ambil data owner");
+    }
+  };
 
   const loadWarung = async () => {
-  try {
-    const res = await axiosInstance.get("/warung");
+    try {
+      const res = await axiosInstance.get("/warung");
+      const warung = res.data;
 
-    console.log("DATA WARUNG:", res.data);
+      if (warung && warung.nama_warung) {
+        setWarungExists(true);
 
-    // Jika backend kirim { data: {...} }
-    const warung = res.data.data ? res.data.data : res.data;
-
-    if (warung) {
-      setWarungExists(true);
-      setNamaWarung(warung.nama_warung || "");
-      setAlamatWarung(warung.alamat || "");
-      setStokPertalite(
-        warung.stok_pertalite ? String(warung.stok_pertalite) : ""
-      );
-      setStokPertamax(
-        warung.stok_pertamax ? String(warung.stok_pertamax) : ""
-      );
-      setLatitude(warung.latitude || null);
-      setLongitude(warung.longitude || null);
-      setFoto(warung.foto || null);
-    } else {
+        setNamaWarung(warung.nama_warung || "");
+        setAlamatWarung(warung.alamat || "");
+        setStokPertalite(
+          warung.stok_pertalite ? String(warung.stok_pertalite) : ""
+        );
+        setStokPertamax(
+          warung.stok_pertamax ? String(warung.stok_pertamax) : ""
+        );
+        setLatitude(warung.latitude || null);
+        setLongitude(warung.longitude || null);
+        setFoto(warung.foto || null);
+      } else {
+        setWarungExists(false);
+      }
+    } catch (error) {
+      console.log("Warung belum ada");
       setWarungExists(false);
     }
-  } catch (error) {
-    console.log("Warung belum ada atau belum login");
-    setWarungExists(false);
-  }
-};
-  /* ================= FOTO ================= */
+  };
+
   const pilihFoto = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -100,7 +96,6 @@ export default function ProfileOwnerScreen() {
     }
   };
 
-  /* ================= LOKASI ================= */
   const ambilLokasiWarung = async () => {
     setLoadingLokasi(true);
 
@@ -118,72 +113,83 @@ export default function ProfileOwnerScreen() {
     setLoadingLokasi(false);
   };
 
-  /* ================= SIMPAN ================= */
-const simpanWarung = async () => {
-  if (!namaWarung || !alamatWarung) {
-    Alert.alert("Nama dan alamat wajib diisi");
-    return;
-  }
-
-  const formData = new FormData();
-
-  formData.append("nama_warung", namaWarung);
-  formData.append("alamat", alamatWarung);
-  formData.append("stok_pertalite", stokPertalite);
-  formData.append("stok_pertamax", stokPertamax);
-  formData.append("latitude", latitude);
-  formData.append("longitude", longitude);
-
-  if (foto?.uri) {
-    formData.append("foto", {
-      uri: foto.uri,
-      name: "warung.jpg",
-      type: "image/jpeg",
-    });
-  }
-
-  try {
-    if (warungExists) {
-      await axiosInstance.post("/warung?_method=PUT", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      Alert.alert("Warung berhasil diupdate");
-    } else {
-      await axiosInstance.post("/warung", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      Alert.alert("Warung berhasil dibuat");
+  const simpanWarung = async () => {
+    if (!namaWarung || !alamatWarung) {
+      Alert.alert("Nama dan alamat wajib diisi");
+      return;
     }
 
-    // 🔥 reload data setelah simpan
-    loadWarung();
+    const formData = new FormData();
 
-  } catch (error) {
-    console.log(error.response?.data);
-    Alert.alert("Gagal menyimpan");
-  }
-};
+    formData.append("nama_warung", namaWarung);
+    formData.append("alamat", alamatWarung);
+    formData.append("stok_pertalite", stokPertalite);
+    formData.append("stok_pertamax", stokPertamax);
+    formData.append("latitude", latitude);
+    formData.append("longitude", longitude);
 
-  /* ================= LOGOUT ================= */
- const handleLogout = async () => {
-  await AsyncStorage.clear();
-  navigation.replace("Login");
-};
+    if (foto?.uri) {
+      formData.append("foto", {
+        uri: foto.uri,
+        name: "warung.jpg",
+        type: "image/jpeg",
+      });
+    }
+
+    try {
+      if (warungExists) {
+        await axiosInstance.post("/warung?_method=PUT", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        Alert.alert("Warung berhasil diupdate");
+      } else {
+        await axiosInstance.post("/warung", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        Alert.alert("Warung berhasil dibuat");
+      }
+
+      loadWarung();
+    } catch (error) {
+      console.log(error.response?.data);
+      Alert.alert("Gagal menyimpan");
+    }
+  };
+
+  const handleLogout = async () => {
+    await AsyncStorage.clear();
+    navigation.replace("Login");
+  };
+
+  const tambahPertalite = () => {
+    setStokPertalite(String(parseInt(stokPertalite || "0") + 1));
+  };
+
+  const kurangPertalite = () => {
+    if (parseInt(stokPertalite || "0") > 0) {
+      setStokPertalite(String(parseInt(stokPertalite) - 1));
+    }
+  };
+
+  const tambahPertamax = () => {
+    setStokPertamax(String(parseInt(stokPertamax || "0") + 1));
+  };
+
+  const kurangPertamax = () => {
+    if (parseInt(stokPertamax || "0") > 0) {
+      setStokPertamax(String(parseInt(stokPertamax) - 1));
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Profile Owner</Text>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* DATA OWNER */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Data Owner</Text>
 
@@ -198,38 +204,36 @@ const simpanWarung = async () => {
           )}
         </View>
 
-        {/* DATA WARUNG */}
         <View style={styles.card}>
           <Text style={styles.sectionTitle}>Data Warung</Text>
 
-          {foto && (
-            <Image
-              source={{
-                uri: foto.uri
-                  ? foto.uri
-                  : `http://192.168.1.6:8000/storage/${foto}`,
-              }}
-              style={styles.image}
-            />
+          {imageUrl ? (
+            <Image source={{ uri: imageUrl }} style={styles.image} />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Text>Foto belum ada</Text>
+            </View>
           )}
 
           <TouchableOpacity style={styles.button} onPress={pilihFoto}>
             <Text style={styles.buttonText}>Pilih Foto</Text>
           </TouchableOpacity>
 
+          <Text style={styles.label}>Nama Warung</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nama Warung"
             value={namaWarung}
             onChangeText={setNamaWarung}
           />
 
+          <Text style={styles.label}>Alamat</Text>
           <TextInput
             style={styles.input}
-            placeholder="Alamat"
             value={alamatWarung}
             onChangeText={setAlamatWarung}
           />
+
+          <Text style={styles.label}>Lokasi Warung</Text>
 
           <TouchableOpacity
             style={styles.locationButton}
@@ -246,21 +250,49 @@ const simpanWarung = async () => {
             Lat: {latitude || "-"} | Long: {longitude || "-"}
           </Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Stok Pertalite"
-            keyboardType="numeric"
-            value={stokPertalite}
-            onChangeText={setStokPertalite}
-          />
+          <Text style={styles.label}>Stok Pertalite</Text>
 
-          <TextInput
-            style={styles.input}
-            placeholder="Stok Pertamax"
-            keyboardType="numeric"
-            value={stokPertamax}
-            onChangeText={setStokPertamax}
-          />
+          <View style={styles.stokRow}>
+            <Text style={styles.stokText}>{stokPertalite || 0} Liter</Text>
+
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={styles.stokButton}
+                onPress={tambahPertalite}
+              >
+                <Text style={styles.stokButtonText}>+</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.stokButton}
+                onPress={kurangPertalite}
+              >
+                <Text style={styles.stokButtonText}>-</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <Text style={styles.label}>Stok Pertamax</Text>
+
+          <View style={styles.stokRow}>
+            <Text style={styles.stokText}>{stokPertamax || 0} Liter</Text>
+
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity
+                style={styles.stokButton}
+                onPress={tambahPertamax}
+              >
+                <Text style={styles.stokButtonText}>+</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.stokButton}
+                onPress={kurangPertamax}
+              >
+                <Text style={styles.stokButtonText}>-</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={simpanWarung}>
             <Text style={styles.buttonText}>
@@ -274,13 +306,11 @@ const simpanWarung = async () => {
         </TouchableOpacity>
       </ScrollView>
 
-      {/* BOTTOM NAV */}
       <OwnerBottomNav navigation={navigation} active="Profile" />
     </SafeAreaView>
   );
 }
 
-/* ================= STYLE ================= */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F4F6F8" },
 
@@ -292,10 +322,7 @@ const styles = StyleSheet.create({
     borderColor: "#eee",
   },
 
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
+  headerTitle: { fontSize: 18, fontWeight: "bold" },
 
   scrollContent: {
     flexGrow: 1,
@@ -317,21 +344,39 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
 
-  label: { color: "#888", marginTop: 10 },
-  value: { fontWeight: "bold", marginBottom: 10 },
+  label: {
+    color: "#555",
+    marginBottom: 5,
+    marginTop: 10,
+    fontWeight: "600",
+  },
+
+  value: {
+    fontWeight: "bold",
+    marginBottom: 10,
+  },
 
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
     borderRadius: 8,
     padding: 12,
-    marginBottom: 15,
+    backgroundColor: "#fafafa",
   },
 
   image: {
     width: "100%",
-    height: 180,
+    height: 200,
     borderRadius: 10,
+    marginBottom: 10,
+  },
+
+  imagePlaceholder: {
+    height: 200,
+    borderRadius: 10,
+    backgroundColor: "#eee",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 10,
   },
 
@@ -340,7 +385,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
-    marginBottom: 15,
+    marginBottom: 10,
   },
 
   locationButton: {
@@ -348,7 +393,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     alignItems: "center",
-    marginBottom: 10,
+    marginTop: 5,
   },
 
   saveButton: {
@@ -356,6 +401,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderRadius: 10,
     alignItems: "center",
+    marginTop: 15,
   },
 
   logoutButton: {
@@ -366,5 +412,46 @@ const styles = StyleSheet.create({
   },
 
   buttonText: { color: "#fff", fontWeight: "bold" },
-  smallText: { fontSize: 12, marginBottom: 15 },
+
+  smallText: {
+    fontSize: 12,
+    marginTop: 5,
+    marginBottom: 10,
+    color: "#555",
+  },
+
+  stokRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: "#F8F9F9",
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+
+  stokText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  buttonGroup: {
+    flexDirection: "row",
+  },
+
+  stokButton: {
+    backgroundColor: "#3498DB",
+    width: 35,
+    height: 35,
+    borderRadius: 6,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+
+  stokButtonText: {
+    color: "#fff",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
 });

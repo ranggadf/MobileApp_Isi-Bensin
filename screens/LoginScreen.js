@@ -10,14 +10,20 @@ import {
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "../src/api/config";
+import Ionicons from "react-native-vector-icons/Ionicons";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+
   const handleLogin = async () => {
+    setError("");
+
     if (!email || !password) {
-      alert("Email dan password wajib diisi!");
+      setError("Email dan password wajib diisi");
       return;
     }
 
@@ -27,10 +33,7 @@ export default function LoginScreen({ navigation }) {
       if (res.data.success) {
         const token = res.data.token;
 
-        // ✅ Simpan token
         await AsyncStorage.setItem("token", token);
-
-        alert("Login Berhasil!");
 
         const role = res.data.data.role;
 
@@ -42,7 +45,7 @@ export default function LoginScreen({ navigation }) {
       }
     } catch (err) {
       console.log(err.response ? err.response.data : err);
-      alert("Login gagal, cek kredensial!");
+      setError("Email atau password salah");
     }
   };
 
@@ -56,24 +59,53 @@ export default function LoginScreen({ navigation }) {
 
       <Text style={styles.title}>Login</Text>
 
-      <TextInput
-        placeholder="Email"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-      />
+      {/* EMAIL */}
+      <View style={styles.inputContainer}>
+        <Ionicons name="mail-outline" size={20} color="#777" style={styles.icon}/>
+        <TextInput
+          placeholder="Email"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+        />
+      </View>
 
-      <TextInput
-        placeholder="Password"
-        style={styles.input}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
+      {/* PASSWORD */}
+      <View style={styles.inputContainer}>
+        <Ionicons name="lock-closed-outline" size={20} color="#777" style={styles.icon}/>
+        <TextInput
+          placeholder="Password"
+          style={styles.input}
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+        />
 
+        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+          <Ionicons
+            name={showPassword ? "eye-off-outline" : "eye-outline"}
+            size={22}
+            color="#777"
+          />
+        </TouchableOpacity>
+      </View>
+
+      {/* ERROR */}
+      {error ? <Text style={styles.error}>{error}</Text> : null}
+
+      {/* BUTTON */}
       <TouchableOpacity style={styles.button} onPress={handleLogin}>
         <Text style={styles.buttonText}>Masuk</Text>
       </TouchableOpacity>
+
+      {/* REGISTER */}
+     <View style={styles.registerContainer}>
+  <Text style={styles.registerText}>Belum punya akun?</Text>
+<TouchableOpacity onPress={() => navigation.navigate("RegisterChoice")}>
+  <Text style={styles.registerLink}> Daftar</Text>
+</TouchableOpacity>
+</View>
+
     </View>
   );
 }
@@ -81,39 +113,78 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
+    padding: 25,
     justifyContent: "center",
     backgroundColor: "#fff",
   },
+
   logo: {
     width: 120,
     height: 120,
     alignSelf: "center",
-    marginBottom: 20,
+    marginBottom: 10,
   },
+
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: "700",
-    marginBottom: 20,
+    marginBottom: 25,
     textAlign: "center",
   },
-  input: {
+
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
-    borderColor: "#ccc",
+    borderColor: "#ddd",
     borderRadius: 10,
-    padding: 12,
+    paddingHorizontal: 12,
     marginBottom: 15,
   },
+
+  icon: {
+    marginRight: 8,
+  },
+
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+  },
+
+  error: {
+    color: "red",
+    marginBottom: 10,
+    fontSize: 14,
+  },
+
   button: {
     backgroundColor: "#007AFF",
-    padding: 14,
+    padding: 15,
     borderRadius: 10,
     alignItems: "center",
-    marginTop: 10,
+    marginTop: 5,
   },
+
   buttonText: {
     color: "#fff",
     fontSize: 16,
+    fontWeight: "600",
+  },
+
+  registerContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+
+  registerText: {
+    fontSize: 14,
+    color: "#555",
+  },
+
+  registerLink: {
+    fontSize: 14,
+    color: "#007AFF",
     fontWeight: "600",
   },
 });

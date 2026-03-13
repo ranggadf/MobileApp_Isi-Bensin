@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -12,11 +12,37 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import OwnerBottomNav from "../component/OwnerBottomNav";
+import axiosInstance from "../api/AxiosInstance";
 
 const { width } = Dimensions.get("window");
 
 export default function DashboardOwner({ navigation }) {
   const insets = useSafeAreaInsets();
+
+  const [warung, setWarung] = useState(null);
+
+  /* ================= LOAD DATA WARUNG ================= */
+  useEffect(() => {
+    loadWarung();
+  }, []);
+
+  const loadWarung = async () => {
+    try {
+      const res = await axiosInstance.get("/warung");
+
+      console.log("DATA WARUNG DASHBOARD:", res.data);
+
+      setWarung(res.data);
+    } catch (error) {
+      console.log("Gagal mengambil data warung");
+    }
+  };
+
+  /* ================= URL FOTO ================= */
+  const imageUrl =
+    warung?.foto
+      ? `http://192.168.1.11:8000/storage/${warung.foto}`
+      : null;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -40,16 +66,27 @@ export default function DashboardOwner({ navigation }) {
       >
         {/* FOTO WARUNG */}
         <View style={styles.warungContainer}>
-          <Image
-            source={require("../../assets/profile.jpeg")}
-            style={styles.warungImage}
-            resizeMode="cover"
-          />
-          <Text style={styles.namaWarung}>Warung Maju Jaya</Text>
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.warungImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Image
+              source={require("../../assets/profile.jpeg")}
+              style={styles.warungImage}
+              resizeMode="cover"
+            />
+          )}
+
+          <Text style={styles.namaWarung}>
+            {warung?.nama_warung || "Nama Warung"}
+          </Text>
 
           <TouchableOpacity
             style={styles.kelolaButton}
-            onPress={() => navigation.navigate("KelolaWarung")}
+            onPress={() => navigation.navigate("ProfileOwner")}
           >
             <Text style={styles.kelolaText}>Kelola Warung</Text>
           </TouchableOpacity>
@@ -61,18 +98,22 @@ export default function DashboardOwner({ navigation }) {
 
           <View style={styles.stokItem}>
             <Text style={styles.stokLabel}>Pertalite</Text>
-            <Text style={styles.stokValue}>120 Liter</Text>
+            <Text style={styles.stokValue}>
+              {warung?.stok_pertalite || 0} Liter
+            </Text>
           </View>
 
           <View style={styles.stokItem}>
             <Text style={styles.stokLabel}>Pertamax</Text>
-            <Text style={styles.stokValue}>80 Liter</Text>
+            <Text style={styles.stokValue}>
+              {warung?.stok_pertamax || 0} Liter
+            </Text>
           </View>
         </View>
       </ScrollView>
 
       {/* BOTTOM NAV COMPONENT */}
-      <OwnerBottomNav />
+      <OwnerBottomNav navigation={navigation} active="Dashboard" />
     </SafeAreaView>
   );
 }
