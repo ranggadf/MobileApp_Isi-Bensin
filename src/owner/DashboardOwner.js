@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import OwnerBottomNav from "../component/OwnerBottomNav";
 import axiosInstance from "../api/AxiosInstance";
 
@@ -22,13 +23,9 @@ export default function DashboardOwner({ navigation }) {
   const [warung, setWarung] = useState(null);
 
   /* ================= LOAD DATA WARUNG ================= */
-  useEffect(() => {
-    loadWarung();
-  }, []);
-
   const loadWarung = async () => {
     try {
-      const res = await axiosInstance.get("/warung");
+      const res = await axiosInstance.get("/owner/warung");
 
       console.log("DATA WARUNG DASHBOARD:", res.data);
 
@@ -38,10 +35,17 @@ export default function DashboardOwner({ navigation }) {
     }
   };
 
+  /* ================= AUTO REFRESH ================= */
+  useFocusEffect(
+    useCallback(() => {
+      loadWarung();
+    }, [])
+  );
+
   /* ================= URL FOTO ================= */
   const imageUrl =
     warung?.foto
-      ? `http://192.168.1.11:8000/storage/${warung.foto}`
+      ? `http://192.168.1.6:8000/storage/${warung.foto}`
       : null;
 
   return (
@@ -51,6 +55,7 @@ export default function DashboardOwner({ navigation }) {
       {/* HEADER */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <Text style={styles.headerTitle}>Beranda</Text>
+
         <TouchableOpacity style={styles.notifIcon}>
           <Ionicons name="notifications-outline" size={26} color="#000" />
         </TouchableOpacity>
@@ -64,55 +69,94 @@ export default function DashboardOwner({ navigation }) {
         ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* FOTO WARUNG */}
-        <View style={styles.warungContainer}>
-          {imageUrl ? (
-            <Image
-              source={{ uri: imageUrl }}
-              style={styles.warungImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <Image
-              source={require("../../assets/profile.jpeg")}
-              style={styles.warungImage}
-              resizeMode="cover"
-            />
-          )}
-
-          <Text style={styles.namaWarung}>
-            {warung?.nama_warung || "Nama Warung"}
-          </Text>
-
-          <TouchableOpacity
-            style={styles.kelolaButton}
-            onPress={() => navigation.navigate("ProfileOwner")}
-          >
-            <Text style={styles.kelolaText}>Kelola Warung</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* STOK BBM */}
-        <View style={styles.stokContainer}>
-          <Text style={styles.stokTitle}>Stok BBM</Text>
-
-          <View style={styles.stokItem}>
-            <Text style={styles.stokLabel}>Pertalite</Text>
-            <Text style={styles.stokValue}>
-              {warung?.stok_pertalite || 0} Liter
+        {/* JIKA WARUNG BELUM ADA */}
+        {!warung && (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>
+              Anda belum membuat warung
             </Text>
-          </View>
 
-          <View style={styles.stokItem}>
-            <Text style={styles.stokLabel}>Pertamax</Text>
-            <Text style={styles.stokValue}>
-              {warung?.stok_pertamax || 0} Liter
-            </Text>
+            <TouchableOpacity
+              style={styles.createButton}
+              onPress={() => navigation.navigate("ProfileOwner")}
+            >
+              <Text style={styles.createButtonText}>
+                Buat Warung Sekarang
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
+
+        {/* DATA WARUNG */}
+        {warung && (
+          <>
+            {/* FOTO WARUNG */}
+            <View style={styles.warungContainer}>
+              {imageUrl ? (
+                <Image
+                  source={{ uri: imageUrl }}
+                  style={styles.warungImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Image
+                  source={require("../../assets/profile.jpeg")}
+                  style={styles.warungImage}
+                  resizeMode="cover"
+                />
+              )}
+
+              <Text style={styles.namaWarung}>
+                {warung?.nama_warung || "Nama Warung"}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.kelolaButton}
+                onPress={() => navigation.navigate("ProfileOwner")}
+              >
+                <Text style={styles.kelolaText}>Kelola Warung</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* STOK BBM */}
+            <View style={styles.stokContainer}>
+              <Text style={styles.stokTitle}>Stok & Harga BBM</Text>
+
+              {/* PERTALITE */}
+              <View style={styles.stokItem}>
+                <View>
+                  <Text style={styles.stokLabel}>Pertalite</Text>
+
+                  <Text style={styles.hargaText}>
+                    Rp {warung?.harga_pertalite || 0} / Liter
+                  </Text>
+                </View>
+
+                <Text style={styles.stokValue}>
+                  {warung?.stok_pertalite || 0} L
+                </Text>
+              </View>
+
+              {/* PERTAMAX */}
+              <View style={styles.stokItem}>
+                <View>
+                  <Text style={styles.stokLabel}>Pertamax</Text>
+
+                  <Text style={styles.hargaText}>
+                    Rp {warung?.harga_pertamax || 0} / Liter
+                  </Text>
+                </View>
+
+                <Text style={styles.stokValue}>
+                  {warung?.stok_pertamax || 0} L
+                </Text>
+              </View>
+            </View>
+          </>
+        )}
       </ScrollView>
 
-      {/* BOTTOM NAV COMPONENT */}
+      {/* BOTTOM NAV */}
       <OwnerBottomNav navigation={navigation} active="Dashboard" />
     </SafeAreaView>
   );
@@ -190,6 +234,7 @@ const styles = StyleSheet.create({
   stokItem: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "center",
     backgroundColor: "#fff",
     padding: 15,
     borderRadius: 10,
@@ -199,11 +244,42 @@ const styles = StyleSheet.create({
 
   stokLabel: {
     fontSize: width * 0.04,
+    fontWeight: "bold",
   },
 
   stokValue: {
-    fontSize: width * 0.04,
+    fontSize: width * 0.045,
     fontWeight: "bold",
     color: "#2E86DE",
+  },
+
+  hargaText: {
+    fontSize: 12,
+    color: "#666",
+    marginTop: 3,
+  },
+
+  emptyContainer: {
+    backgroundColor: "#fff",
+    padding: 25,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+
+  emptyText: {
+    fontSize: 16,
+    marginBottom: 15,
+  },
+
+  createButton: {
+    backgroundColor: "#2ECC71",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+
+  createButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
   },
 });

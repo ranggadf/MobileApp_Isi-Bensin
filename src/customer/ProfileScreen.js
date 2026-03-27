@@ -1,234 +1,308 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
-  TextInput,
-  Alert,
+  ScrollView,
+  ActivityIndicator,
   StatusBar,
+  Alert,
+  TextInput,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
-import axios from "axios";
+import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import API from "../api/config";
+import { useNavigation } from "@react-navigation/native";
+import CustomerBottomNav from "../component/CustomerBottomNav";
+import axiosInstance from "../api/AxiosInstance";
+import { Ionicons } from "@expo/vector-icons";
 
-export default function ProfileOwnerScreen() {
+export default function ProfileScreen() {
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
+  const [showPassword, setShowPassword] = useState(false);
+  const [customer, setCustomer] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [editMode, setEditMode] = useState(false);
 
-  const [namaWarung, setNamaWarung] = useState("");
-  const [alamatWarung, setAlamatWarung] = useState("");
-  const [stokPertalite, setStokPertalite] = useState("");
-  const [stokPertamax, setStokPertamax] = useState("");
-  const [latitude, setLatitude] = useState("");
-  const [longitude, setLongitude] = useState("");
-  const [warungExists, setWarungExists] = useState(false);
+  const [nama, setNama] = useState("");
+  const [email, setEmail] = useState("");
+  const [noHp, setNoHp] = useState("");
+  const [password, setPassword] = useState("");
 
-  // ===============================
-  // 🔵 LOAD DATA WARUNG SAAT BUKA
-  // ===============================
   useEffect(() => {
-    loadWarung();
+    loadCustomer();
   }, []);
 
-  const loadWarung = async () => {
+  const loadCustomer = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const res = await axiosInstance.get("/user");
+      const user = res.data.data ? res.data.data : res.data;
 
-      const res = await axios.get(API.WARUNG, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: "application/json",
-        },
-      });
-
-      if (res.data) {
-        setWarungExists(true);
-        setNamaWarung(res.data.nama_warung || "");
-        setAlamatWarung(res.data.alamat || "");
-        setStokPertalite(String(res.data.stok_pertalite || ""));
-        setStokPertamax(String(res.data.stok_pertamax || ""));
-        setLatitude(String(res.data.latitude || ""));
-        setLongitude(String(res.data.longitude || ""));
-      }
+      setCustomer(user);
+      setNama(user.nama);
+      setEmail(user.email);
+      setNoHp(user.no_hp);
     } catch (error) {
-      console.log("Warung belum ada");
+      console.log("Gagal ambil data customer");
+    } finally {
+      setLoading(false);
     }
   };
 
-  // ===============================
-  // 🟢 SIMPAN / UPDATE WARUNG
-  // ===============================
-  const simpanWarung = async () => {
+  const handleUpdate = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-
-      if (
-        !namaWarung ||
-        !alamatWarung ||
-        !latitude ||
-        !longitude ||
-        !stokPertalite ||
-        !stokPertamax
-      ) {
-        Alert.alert("Error", "Semua data wajib diisi");
-        return;
-      }
-
-      const data = {
-        nama_warung: namaWarung,
-        alamat: alamatWarung,
-        latitude: latitude,
-        longitude: longitude,
-        stok_pertalite: Number(stokPertalite),
-        stok_pertamax: Number(stokPertamax),
+      const payload = {
+        nama: nama,
+        email: email,
+        no_hp: noHp,
       };
 
-      if (warungExists) {
-        await axios.put(API.WARUNG, data, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
-
-        Alert.alert("Sukses", "Warung berhasil diupdate");
-      } else {
-        await axios.post(API.WARUNG, data, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-        });
-
-        Alert.alert("Sukses", "Warung berhasil dibuat");
-        setWarungExists(true);
+      if (password !== "") {
+        payload.password = password;
       }
+
+      await axiosInstance.put("/user", payload);
+
+      Alert.alert("Berhasil", "Data akun berhasil diperbarui");
+      setEditMode(false);
+      setPassword("");
+      loadCustomer();
     } catch (error) {
-      console.log(error.response?.data || error);
-      Alert.alert("Error", "Gagal menyimpan warung");
+      Alert.alert("Error", "Gagal update data");
     }
   };
 
-  // ===============================
-  // 🔴 LOGOUT
-  // ===============================
   const handleLogout = async () => {
-    await AsyncStorage.removeItem("token");
-    navigation.replace("Login");
+    try {
+      await AsyncStorage.clear();
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "AuthStack" }],
+      });
+    } catch (error) {
+      Alert.alert("Logout gagal");
+    }
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: 100 + insets.bottom },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.title}>Profile Owner</Text>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Profile</Text>
+      </View>
 
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.card}>
-          <Text style={styles.label}>Nama Warung</Text>
-          <TextInput
-            style={styles.input}
-            value={namaWarung}
-            onChangeText={setNamaWarung}
-          />
+          <Text style={styles.sectionTitle}>Data Akun</Text>
 
-          <Text style={styles.label}>Alamat</Text>
-          <TextInput
-            style={styles.input}
-            value={alamatWarung}
-            onChangeText={setAlamatWarung}
-          />
+          {/* Nama */}
+          <Text style={styles.label}>Nama</Text>
+          {editMode ? (
+            <TextInput
+              style={styles.input}
+              value={nama}
+              onChangeText={setNama}
+            />
+          ) : (
+            <Text style={styles.value}>{customer?.nama}</Text>
+          )}
 
-          <Text style={styles.label}>Latitude</Text>
-          <TextInput
-            style={styles.input}
-            value={latitude}
-            onChangeText={setLatitude}
-          />
+          {/* Email */}
+          <Text style={styles.label}>Email</Text>
+          {editMode ? (
+            <TextInput
+              style={styles.input}
+              value={email}
+              onChangeText={setEmail}
+            />
+          ) : (
+            <Text style={styles.value}>{customer?.email}</Text>
+          )}
 
-          <Text style={styles.label}>Longitude</Text>
-          <TextInput
-            style={styles.input}
-            value={longitude}
-            onChangeText={setLongitude}
-          />
+          {/* No HP */}
+          <Text style={styles.label}>No HP</Text>
+          {editMode ? (
+            <TextInput
+              style={styles.input}
+              value={noHp}
+              onChangeText={setNoHp}
+              keyboardType="phone-pad"
+            />
+          ) : (
+            <Text style={styles.value}>{customer?.no_hp}</Text>
+          )}
 
-          <Text style={styles.label}>Stok Pertalite</Text>
-          <TextInput
-            style={styles.input}
-            value={stokPertalite}
-            onChangeText={setStokPertalite}
-            keyboardType="numeric"
-          />
+        {/* Password */}
+<Text style={styles.label}>Password</Text>
 
-          <Text style={styles.label}>Stok Pertamax</Text>
-          <TextInput
-            style={styles.input}
-            value={stokPertamax}
-            onChangeText={setStokPertamax}
-            keyboardType="numeric"
-          />
+{editMode ? (
+  <View style={styles.passwordContainer}>
+    <TextInput
+      style={styles.passwordInput}
+      placeholder="Masukkan password baru"
+      secureTextEntry={!showPassword}
+      value={password}
+      onChangeText={setPassword}
+    />
 
-          <TouchableOpacity style={styles.saveButton} onPress={simpanWarung}>
-            <Text style={styles.buttonText}>
-              {warungExists ? "Update Warung" : "Buat Warung"}
-            </Text>
-          </TouchableOpacity>
+    <TouchableOpacity
+      onPress={() => setShowPassword(!showPassword)}
+    >
+      <Ionicons
+        name={showPassword ? "eye-off-outline" : "eye-outline"}
+        size={22}
+        color="#555"
+      />
+    </TouchableOpacity>
+  </View>
+) : (
+  <Text style={styles.value}>********</Text>
+)}
+
+          {/* Tombol */}
+          {editMode ? (
+            <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
+              <Text style={styles.buttonText}>Simpan Perubahan</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => setEditMode(true)}
+            >
+              <Text style={styles.buttonText}>Edit Data</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
+        {/* Logout */}
         <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
           <Text style={styles.buttonText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <CustomerBottomNav />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1520" },
-  content: { padding: 20 },
-  title: {
-    fontSize: 22,
+  container: { flex: 1, backgroundColor: "#F4F6F8" },
+
+  header: {
+    paddingVertical: 15,
+    alignItems: "center",
+    backgroundColor: "#fff",
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+  },
+
+  headerTitle: {
+    fontSize: 18,
     fontWeight: "bold",
-    color: "#fff",
-    marginBottom: 20,
+    color: "#2563EB",
   },
+
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
+    paddingBottom: 120,
+  },
+
   card: {
-    backgroundColor: "#2A2F3A",
-    borderRadius: 14,
-    padding: 16,
+    backgroundColor: "#fff",
+    padding: 20,
+    borderRadius: 12,
     marginBottom: 20,
+    elevation: 3,
   },
-  label: { color: "#aaa", marginBottom: 5 },
+
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 15,
+    color: "#2563EB",
+  },
+
+  label: {
+    color: "#555",
+    marginBottom: 5,
+    marginTop: 10,
+    fontWeight: "600",
+  },
+
+  value: {
+    fontWeight: "bold",
+    marginBottom: 10,
+    fontSize: 15,
+  },
+
   input: {
-    backgroundColor: "#1B202B",
+    borderWidth: 1,
+    borderColor: "#ddd",
     borderRadius: 8,
     padding: 10,
-    marginBottom: 15,
-    color: "#fff",
+    marginBottom: 10,
+    backgroundColor: "#fff",
   },
+
+  editButton: {
+    backgroundColor: "#2563EB",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
+    alignItems: "center",
+  },
+
   saveButton: {
-    backgroundColor: "#2ECC71",
-    padding: 14,
-    borderRadius: 10,
+    backgroundColor: "#16A34A",
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 10,
     alignItems: "center",
   },
+
   logoutButton: {
-    backgroundColor: "#E74C3C",
+    backgroundColor: "#EF4444",
     padding: 14,
     borderRadius: 10,
     alignItems: "center",
   },
-  buttonText: { color: "#fff", fontWeight: "bold" },
+
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+  },
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  passwordContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#ddd",
+  borderRadius: 8,
+  paddingHorizontal: 10,
+  marginBottom: 10,
+  backgroundColor: "#fff",
+},
+
+passwordInput: {
+  flex: 1,
+  paddingVertical: 10,
+},
 });

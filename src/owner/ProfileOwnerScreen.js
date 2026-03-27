@@ -27,11 +27,19 @@ export default function ProfileOwnerScreen() {
 
   const [namaWarung, setNamaWarung] = useState("");
   const [alamatWarung, setAlamatWarung] = useState("");
+
   const [stokPertalite, setStokPertalite] = useState("");
   const [stokPertamax, setStokPertamax] = useState("");
+
+  const [hargaPertalite, setHargaPertalite] = useState("");
+  const [hargaPertamax, setHargaPertamax] = useState("");
+
   const [latitude, setLatitude] = useState(null);
   const [longitude, setLongitude] = useState(null);
+
   const [foto, setFoto] = useState(null);
+
+  const [loadingLokasi, setLoadingLokasi] = useState(false);
 
   const imageUrl =
     foto?.uri
@@ -40,12 +48,15 @@ export default function ProfileOwnerScreen() {
       ? `http://192.168.1.11:8000/storage/${foto}`
       : null;
 
-  const [loadingLokasi, setLoadingLokasi] = useState(false);
-
   useEffect(() => {
     loadOwner();
     loadWarung();
+    requestPermission();
   }, []);
+
+  const requestPermission = async () => {
+    await ImagePicker.requestMediaLibraryPermissionsAsync();
+  };
 
   const loadOwner = async () => {
     try {
@@ -59,7 +70,7 @@ export default function ProfileOwnerScreen() {
 
   const loadWarung = async () => {
     try {
-      const res = await axiosInstance.get("/warung");
+      const res = await axiosInstance.get("/owner/warung");
       const warung = res.data;
 
       if (warung && warung.nama_warung) {
@@ -67,12 +78,23 @@ export default function ProfileOwnerScreen() {
 
         setNamaWarung(warung.nama_warung || "");
         setAlamatWarung(warung.alamat || "");
+
         setStokPertalite(
           warung.stok_pertalite ? String(warung.stok_pertalite) : ""
         );
+
         setStokPertamax(
           warung.stok_pertamax ? String(warung.stok_pertamax) : ""
         );
+
+        setHargaPertalite(
+          warung.harga_pertalite ? String(warung.harga_pertalite) : ""
+        );
+
+        setHargaPertamax(
+          warung.harga_pertamax ? String(warung.harga_pertamax) : ""
+        );
+
         setLatitude(warung.latitude || null);
         setLongitude(warung.longitude || null);
         setFoto(warung.foto || null);
@@ -100,6 +122,7 @@ export default function ProfileOwnerScreen() {
     setLoadingLokasi(true);
 
     const { status } = await Location.requestForegroundPermissionsAsync();
+
     if (status !== "granted") {
       Alert.alert("Izin lokasi ditolak");
       setLoadingLokasi(false);
@@ -107,6 +130,7 @@ export default function ProfileOwnerScreen() {
     }
 
     const location = await Location.getCurrentPositionAsync({});
+
     setLatitude(location.coords.latitude);
     setLongitude(location.coords.longitude);
 
@@ -119,12 +143,22 @@ export default function ProfileOwnerScreen() {
       return;
     }
 
+    if (!hargaPertalite || !hargaPertamax) {
+      Alert.alert("Harga bensin harus diisi");
+      return;
+    }
+
     const formData = new FormData();
 
     formData.append("nama_warung", namaWarung);
     formData.append("alamat", alamatWarung);
+
     formData.append("stok_pertalite", stokPertalite);
     formData.append("stok_pertamax", stokPertamax);
+
+    formData.append("harga_pertalite", hargaPertalite);
+    formData.append("harga_pertamax", hargaPertamax);
+
     formData.append("latitude", latitude);
     formData.append("longitude", longitude);
 
@@ -141,11 +175,13 @@ export default function ProfileOwnerScreen() {
         await axiosInstance.post("/warung?_method=PUT", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+
         Alert.alert("Warung berhasil diupdate");
       } else {
         await axiosInstance.post("/warung", formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
+
         Alert.alert("Warung berhasil dibuat");
       }
 
@@ -272,6 +308,14 @@ export default function ProfileOwnerScreen() {
             </View>
           </View>
 
+          <Text style={styles.label}>Harga Pertalite / Liter</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            value={hargaPertalite}
+            onChangeText={setHargaPertalite}
+          />
+
           <Text style={styles.label}>Stok Pertamax</Text>
 
           <View style={styles.stokRow}>
@@ -293,6 +337,14 @@ export default function ProfileOwnerScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
+          <Text style={styles.label}>Harga Pertamax / Liter</Text>
+          <TextInput
+            style={styles.input}
+            keyboardType="numeric"
+            value={hargaPertamax}
+            onChangeText={setHargaPertamax}
+          />
 
           <TouchableOpacity style={styles.saveButton} onPress={simpanWarung}>
             <Text style={styles.buttonText}>

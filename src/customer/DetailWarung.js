@@ -2,271 +2,213 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   Image,
   TouchableOpacity,
-  StyleSheet,
   ScrollView,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRoute, useNavigation } from "@react-navigation/native";
 
-export default function DetailWarung() {
+import { useRoute, useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { Ionicons } from "@expo/vector-icons";
+
+import CustomerBottomNav from "../component/CustomerBottomNav";
+
+export default function DetailWarungScreen() {
   const route = useRoute();
   const navigation = useNavigation();
-  const { data } = route.params;
 
-  const [jumlahPertalite, setJumlahPertalite] = useState(0);
-  const [jumlahPertamax, setJumlahPertamax] = useState(0);
+  const { warung } = route.params;
+
+  const [pertalite, setPertalite] = useState(1);
+  const [pertamax, setPertamax] = useState(1);
 
   return (
-    <SafeAreaView edges={["left", "right", "bottom"]} style={styles.container}>
-      <ScrollView style={{ flex: 1 }}>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* Foto Warung */}
-        <View style={styles.imageWrapper}>
-          <Image
-            source={require("../../assets/images/warung.jpeg")}
-            style={styles.warungImage}
-          />
-        </View>
+        {/* FOTO WARUNG */}
+        <Image
+          source={{
+            uri: `http://192.168.1.6:8000/storage/${warung.foto}`,
+          }}
+          style={styles.image}
+        />
 
-        {/* Info Warung */}
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerTitle}>{data.nama}</Text>
-          <View style={styles.row}>
-            <Ionicons name="time-outline" size={16} color="#fff" />
-            <Text style={styles.headerTime}> 30 menit</Text>
-          </View>
-        </View>
+        <View style={styles.container}>
+          
+          {/* NAMA WARUNG */}
+          <Text style={styles.nama}>{warung.nama_warung}</Text>
 
-        {/* Deskripsi Warung */}
-        <View style={styles.section}>
-          <Text style={styles.warungTitle}>{data.nama}</Text>
-          <Text style={styles.warungDesc}>
-            Sedia bensin pertalite dan pertamax dan siap mengantarkan ke tujuan
+          {/* ALAMAT */}
+          <Text style={styles.alamat}>{warung.alamat}</Text>
+
+          {/* DESKRIPSI */}
+          <Text style={styles.deskripsi}>
+            Warung disini menyediakan pemesanan dan pengantaran bahan bakar
+            bensin. Silahkan pesan bensin dan lanjutkan perjalanan anda
           </Text>
-        </View>
 
-        {/* Produk */}
-        <View style={styles.produk}>
-          {/* Pertalite */}
-          <View style={styles.item}>
-            <Image
-              source={{ uri: "https://via.placeholder.com/100" }}
-              style={styles.itemImg}
-            />
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemTitle}>Bensin Pertalite</Text>
-              <Text style={styles.itemHarga}>Rp 5.000</Text>
+          {/* BUTTON LIHAT RUTE */}
+          <TouchableOpacity
+            style={styles.routeButton}
+            onPress={() =>
+              navigation.navigate("RouteMapsScreen", { warung })
+            }
+          >
+            <Ionicons name="navigate-outline" size={20} color="#fff" />
+            <Text style={styles.routeText}>Lihat Rute</Text>
+          </TouchableOpacity>
 
-              <View style={styles.counter}>
-                <TouchableOpacity
-                  onPress={() => setJumlahPertalite(Math.max(0, jumlahPertalite - 1))}
-                >
-                  <Ionicons name="remove-circle-outline" size={24} color="#fff" />
-                </TouchableOpacity>
+          {/* PESAN BBM */}
+          <Text style={styles.sectionTitle}>Pesan BBM</Text>
 
-                <Text style={styles.counterText}>{jumlahPertalite} ltr</Text>
+          {/* PERTALITE */}
+          <View style={styles.bbmRow}>
+            <Text style={styles.bbmName}>Pertalite</Text>
 
-                <TouchableOpacity
-                  onPress={() => setJumlahPertalite(jumlahPertalite + 1)}
-                >
-                  <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
+            <View style={styles.qtyRow}>
+              <TouchableOpacity
+                onPress={() => setPertalite(Math.max(1, pertalite - 1))}
+              >
+                <Ionicons name="remove-circle-outline" size={26} color="#2563EB" />
+              </TouchableOpacity>
+
+              <Text style={styles.qtyText}>{pertalite} L</Text>
+
+              <TouchableOpacity
+                onPress={() => setPertalite(pertalite + 1)}
+              >
+                <Ionicons name="add-circle-outline" size={26} color="#2563EB" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.addBtn}>
-              <Ionicons name="cart-outline" size={20} color="#fff" />
+
+            <TouchableOpacity style={styles.cartButton}>
+              <Ionicons name="cart-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
 
-          {/* Pertamax */}
-          <View style={styles.item}>
-            <Image
-              source={{ uri: "https://via.placeholder.com/100" }}
-              style={styles.itemImg}
-            />
-            <View style={styles.itemInfo}>
-              <Text style={styles.itemTitle}>Bensin Pertamax</Text>
-              <Text style={styles.itemHarga}>Rp 5.000</Text>
+          {/* PERTAMAX */}
+          <View style={styles.bbmRow}>
+            <Text style={styles.bbmName}>Pertamax</Text>
 
-              <View style={styles.counter}>
-                <TouchableOpacity
-                  onPress={() => setJumlahPertamax(Math.max(0, jumlahPertamax - 1))}
-                >
-                  <Ionicons name="remove-circle-outline" size={24} color="#fff" />
-                </TouchableOpacity>
+            <View style={styles.qtyRow}>
+              <TouchableOpacity
+                onPress={() => setPertamax(Math.max(1, pertamax - 1))}
+              >
+                <Ionicons name="remove-circle-outline" size={26} color="#2563EB" />
+              </TouchableOpacity>
 
-                <Text style={styles.counterText}>{jumlahPertamax} ltr</Text>
+              <Text style={styles.qtyText}>{pertamax} L</Text>
 
-                <TouchableOpacity
-                  onPress={() => setJumlahPertamax(jumlahPertamax + 1)}
-                >
-                  <Ionicons name="add-circle-outline" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                onPress={() => setPertamax(pertamax + 1)}
+              >
+                <Ionicons name="add-circle-outline" size={26} color="#2563EB" />
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.addBtn}>
-              <Ionicons name="cart-outline" size={20} color="#fff" />
+
+            <TouchableOpacity style={styles.cartButton}>
+              <Ionicons name="cart-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
+
         </View>
       </ScrollView>
 
-      {/* Bottom Nav */}
-     <View style={styles.bottomNav}>
-       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("DashboardCustomer")}>
-         <Ionicons name="home-outline" size={24} color="#fff" />
-       </TouchableOpacity>
-     
-       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("KeranjangScreen")}>
-         <Ionicons name="cart-outline" size={24} color="#fff" />
-       </TouchableOpacity>
-     
-       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("PesananScreen")}>
-         <Ionicons name="chatbubble-outline" size={24} color="#fff" />
-       </TouchableOpacity>
-     
-       <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("RiwayatScreen")}>
-         <Ionicons name="time-outline" size={24} color="#fff" />
-       </TouchableOpacity>
-     </View>
-     
-     
-     
+      {/* BOTTOM NAV */}
+      <CustomerBottomNav />
+
     </SafeAreaView>
   );
 }
 
-// ... SAME IMPORTS AND LOGIC
-
 const styles = StyleSheet.create({
-  container: {
+
+  safeArea: {
     flex: 1,
-    backgroundColor: "#0F1520",
+    backgroundColor: "#F1F5F9",
   },
 
-  imageWrapper: {
+  image: {
     width: "100%",
     height: 220,
-    overflow: "hidden",
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
   },
 
-  warungImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
+  container: {
+    padding: 16,
   },
 
-  headerInfo: {
-    padding: 15,
+  nama: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#1e293b",
   },
 
-  headerTitle: {
-    fontSize: 20,
-    color: "#fff",
-    fontWeight: "700",
-  },
-
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
+  alamat: {
     marginTop: 4,
+    color: "#64748b",
   },
 
-  headerTime: {
-    color: "#FFD369",
-    fontSize: 14,
-  },
-
-  section: {
-    padding: 15,
-  },
-
-  warungTitle: {
-    fontSize: 18,
-    color: "#fff",
-    fontWeight: "700",
-  },
-
-  warungDesc: {
-    color: "#A9A9A9",
-    marginTop: 6,
+  deskripsi: {
+    marginTop: 8,
+    color: "#475569",
     lineHeight: 20,
   },
 
-  produk: {
-    paddingHorizontal: 15,
+  routeButton: {
     marginTop: 10,
-  },
-
-  item: {
+    backgroundColor: "#2563EB",
+    padding: 10,
+    borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1C2532",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 15,
-    borderWidth: 1,
-    borderColor: "#2D3645",
+    justifyContent: "center",
   },
 
-  itemImg: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-    marginRight: 12,
-  },
-
-  itemInfo: {
-    flex: 1,
-  },
-
-  itemTitle: {
+  routeText: {
     color: "#fff",
+    marginLeft: 6,
     fontWeight: "600",
-    fontSize: 15,
   },
 
-  itemHarga: {
-    color: "#738cb0",
-    marginTop: 4,
-    fontWeight: "700",
+  sectionTitle: {
+    marginTop: 20,
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
   },
 
-  counter: {
+  bbmRow: {
+    marginTop: 14,
+    backgroundColor: "#fff",
+    padding: 12,
+    borderRadius: 10,
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-    backgroundColor: "#2D3645",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+    justifyContent: "space-between",
   },
 
-  counterText: {
-    color: "#fff",
-    marginHorizontal: 8,
+  bbmName: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "600",
   },
 
-  addBtn: {
-    backgroundColor: "#838bbe",
+  qtyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  qtyText: {
+    marginHorizontal: 10,
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
+  cartButton: {
+    backgroundColor: "#16a34a",
     padding: 8,
     borderRadius: 8,
-  },
-
-  bottomNav: {
-    height: 70,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    backgroundColor: "#161C27",
-    borderTopWidth: 1,
-    borderTopColor: "#2D3645",
   },
 });

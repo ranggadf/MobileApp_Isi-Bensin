@@ -1,199 +1,282 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
-  TouchableOpacity,
-  ScrollView,
   StyleSheet,
+  FlatList,
+  Image,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import axios from "axios";
 import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import * as Location from "expo-location";
 
-export default function DashboardCustomer() {
+import { MapPin } from "lucide-react-native";
+
+import CustomerBottomNav from "../component/CustomerBottomNav";
+
+export default function DashboardCustomerScreen() {
+  const [dataWarung, setDataWarung] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [userLocation, setUserLocation] = useState(null);
+
   const navigation = useNavigation();
 
-  const dataWarung = [
-    { id: 1, nama: "Warung A", alamat: "Jl. MT Haryono" },
-    { id: 2, nama: "Warung B", alamat: "Jl. Soekarno Hatta" },
-    { id: 3, nama: "Warung C", alamat: "Jl. DI Panjaitan" },
-    { id: 4, nama: "Warung D", alamat: "Jl. Urip Sumoharjo" },
-  ];
+  // hitung jarak
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371;
+
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c;
+  };
+
+  const getLocation = async () => {
+    let { status } = await Location.requestForegroundPermissionsAsync();
+
+    if (status !== "granted") {
+      Alert.alert(
+        "GPS Tidak Aktif",
+        "Mohon aktifkan GPS agar aplikasi dapat menampilkan warung terdekat."
+      );
+      return;
+    }
+
+    let location = await Location.getCurrentPositionAsync({});
+
+    const coords = {
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    };
+
+    setUserLocation(coords);
+
+    return coords;
+  };
+
+  const loadWarung = async () => {
+    try {
+      const loc = await getLocation();
+
+      const res = await axios.get("http://192.168.1.108:8000/api/warung");
+
+      if (!Array.isArray(res.data)) {
+        setDataWarung([]);
+        setLoading(false);
+        return;
+      }
+
+      const warungWithDistance = res.data.map((w) => {
+        const distance = getDistance(
+          loc.latitude,
+          loc.longitude,
+          w.latitude,
+          w.longitude
+        );
+
+        return {
+          ...w,
+          jarak: distance,
+        };
+      });
+
+      const sorted = warungWithDistance.sort((a, b) => a.jarak - b.jarak);
+
+      const nearest = sorted.slice(0, 3);
+
+      setDataWarung(nearest);
+
+      setLoading(false);
+    } catch (error) {
+      console.log("ERROR AMBIL WARUNG:", error);
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadWarung();
+  }, []);
+
+  const renderWarung = ({ item }) => {
+    return (
+      <View style={styles.card}>
+        <Image
+          source={{
+            uri: `http://192.168.1.108:8000/storage/${item.foto}`,
+          }}
+          style={styles.image}
+        />
+
+        <View style={styles.info}>
+          <Text style={styles.nama}>{item.nama_warung}</Text>
+
+          <Text style={styles.alamat}>{item.alamat}</Text>
+
+          <Text style={styles.jarak}>
+            📍 {item.jarak.toFixed(2)} km dari lokasi Anda
+          </Text>
+
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() =>
+              navigation.navigate("DetailWarung", {
+                warung: item,
+              })
+            }
+          >
+            <Text style={styles.buttonText}>Lihat</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loading}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.safeArea} edges={["top", "left", "right"]}>
+      {/* HEADER */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Temukan Warung Bensin</Text>
 
-      {/* ===== HEADER ===== */}
-     <View style={styles.header}>
-  <TouchableOpacity onPress={() => navigation.navigate("ProfileScreen")}>
-    <Ionicons name="person-circle-outline" size={50} color="#fff" />
-  </TouchableOpacity>
+        <View style={styles.subtitleRow}>
+          <Text style={styles.subtitle}>
+            Pilih warung terdekat dan pesan bensin dengan mudah
+          </Text>
 
-  <View style={{ flex: 1 }} />
-
-  <Ionicons
-    name="location-outline"
-    size={40}
-    color="#fff"
-    onPress={() => navigation.navigate("MapsScreen")}
-  />
-</View>
-
-      {/* ===== INFO TEXT ===== */}
-      <View style={styles.info}>
-        <Text style={styles.infoTitle}>
-          Cari Warung bensin 24 jam terdekat di sekitar!
-        </Text>
-        <Text style={styles.infoSub}>
-          Warung bensin 24 jam terdekat
-        </Text>
+          <TouchableOpacity
+            style={styles.mapButton}
+            onPress={() => navigation.navigate("MapsScreen")}
+          >
+            <MapPin size={22} color="#2563EB" />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* ===== CONTENT ===== */}
-      <View style={styles.content}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.grid}
-        >
-          {dataWarung.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.card}
-              onPress={() => navigation.navigate("DetailWarung", { data: item })}
-            >
-              <View style={styles.cardImage} />
-              <View style={styles.cardInfo}>
-                <Text style={styles.cardName}>{item.nama}</Text>
-                <Text
-                  style={styles.cardLihat}
-                  onPress={() => navigation.navigate("DetailWarung", { data: item })}
-                >
-                  Lihat
-                </Text>
-                <Text style={styles.cardJarak}>1km dari sini</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+      <FlatList
+        data={dataWarung}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderWarung}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.list}
+      />
 
-      {/* ===== BOTTOM NAV ===== */}
-      <View style={styles.bottomNav}>
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("DashboardCustomer")}>
-          <Ionicons name="home-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("KeranjangScreen")}>
-          <Ionicons name="cart-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("PesananScreen")}>
-          <Ionicons name="chatbubble-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate("RiwayatScreen")}>
-          <Ionicons name="time-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
-
+      <CustomerBottomNav />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
-    backgroundColor: "#0F1520",
+    backgroundColor: "#F1F5F9",
   },
 
   header: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
+
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#1e293b",
+  },
+
+  subtitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 15,
-    paddingVertical: 10,
-  },
-
-  info: {
-    paddingHorizontal: 15,
-    marginBottom: 10,
-    marginTop: 30,
-  },
-
-  infoTitle: {
-    fontSize: 24,
-    fontWeight: "700",
-    color: "#fff",
-    marginBottom: 10,
-  },
-
-  infoSub: {
-    fontSize: 18,
-    fontWeight: "400",
-    color: "#D0D0D0",
-  },
-
-  content: {
-    flex: 1,
-  },
-
-  grid: {
-    paddingHorizontal: 15,
-    paddingBottom: 15,
-    flexDirection: "row",
-    flexWrap: "wrap",
     justifyContent: "space-between",
+    marginTop: 4,
+  },
+
+  subtitle: {
+    flex: 1,
+    color: "#64748b",
+    marginRight: 10,
+  },
+
+  mapButton: {
+    backgroundColor: "#E0ECFF",
+    padding: 8,
+    borderRadius: 10,
+  },
+
+  list: {
+    paddingHorizontal: 15,
+    paddingBottom: 120,
   },
 
   card: {
-    width: "48%",
-    backgroundColor: "#2A2F3A",
+    backgroundColor: "#fff",
     borderRadius: 12,
-    marginBottom: 30,
+    marginBottom: 15,
     overflow: "hidden",
-    marginTop: 30,
+    elevation: 3,
   },
 
-  cardImage: {
-    height: 110,
-    backgroundColor: "#808080",
+  image: {
+    width: "100%",
+    height: 160,
   },
 
-  cardInfo: {
-    padding: 8,
-    alignItems: "center",
+  info: {
+    padding: 12,
   },
 
-  cardName: {
+  nama: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#1e293b",
+  },
+
+  alamat: {
+    color: "#64748b",
+    marginTop: 4,
+  },
+
+  jarak: {
+    marginTop: 6,
+    color: "#2563EB",
     fontWeight: "600",
-    fontSize: 14,
+  },
+
+  button: {
+    marginTop: 10,
+    backgroundColor: "#2563EB",
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+
+  buttonText: {
     color: "#fff",
-    marginBottom: 4,
+    fontWeight: "600",
   },
 
-  cardLihat: {
-    fontSize: 12,
-    color: "#bfbfbf",
-    marginBottom: 2,
-  },
-
-  cardJarak: {
-    fontSize: 12,
-    color: "#4DA3FF",
-  },
-
-  bottomNav: {
-    height: 72,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    backgroundColor: "#1B202B",
-    borderTopWidth: 1,
-    borderTopColor: "#2A2F3A",
-  },
-
-  navItem: {
-    alignItems: "center",
+  loading: {
+    flex: 1,
     justifyContent: "center",
-    paddingHorizontal: 12,
+    alignItems: "center",
   },
 });

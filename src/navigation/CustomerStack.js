@@ -8,7 +8,7 @@ import RiwayatScreen from "../customer/RiwayatScreen";
 import ProfileScreen from "../customer/ProfileScreen";
 import DetailWarung from "../customer/DetailWarung";
 import MapsScreen from "../customer/MapsScreen";
-
+import RouteMapsScreen from "../customer/RouteMapsScreen";
 const Stack = createNativeStackNavigator();
 
 export default function CustomerStack() {
@@ -21,6 +21,7 @@ export default function CustomerStack() {
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
       <Stack.Screen name="DetailWarung" component={DetailWarung} />
       <Stack.Screen name="MapsScreen" component={MapsScreen} />
+      <Stack.Screen name="RouteMapsScreen" component={RouteMapsScreen} />
     </Stack.Navigator>
   );
 }
