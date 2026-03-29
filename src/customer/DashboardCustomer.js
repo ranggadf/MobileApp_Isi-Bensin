@@ -71,7 +71,7 @@ export default function DashboardCustomerScreen() {
     try {
       const loc = await getLocation();
 
-      const res = await axios.get("http://192.168.1.108:8000/api/warung");
+      const res = await axios.get("http://192.168.1.8:8000/api/warung");
 
       if (!Array.isArray(res.data)) {
         setDataWarung([]);
@@ -115,7 +115,7 @@ export default function DashboardCustomerScreen() {
       <View style={styles.card}>
         <Image
           source={{
-            uri: `http://192.168.1.108:8000/storage/${item.foto}`,
+            uri: `http://192.168.1.8:8000/storage/${item.foto}`,
           }}
           style={styles.image}
         />

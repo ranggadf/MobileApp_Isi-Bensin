@@ -6,12 +6,15 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from "react-native";
 
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Ionicons } from "@expo/vector-icons";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import CustomerBottomNav from "../component/CustomerBottomNav";
 
@@ -24,6 +27,60 @@ export default function DetailWarungScreen() {
   const [pertalite, setPertalite] = useState(1);
   const [pertamax, setPertamax] = useState(1);
 
+  // 🔥 FUNCTION TAMBAH KE KERANJANG (SUDAH ADA VALIDASI STOK)
+  const handleAddToCart = (jenis, qty) => {
+
+    // 🔥 VALIDASI STOK
+    if (jenis === "Pertalite" && qty > warung.stok_pertalite) {
+      Alert.alert("Stok Habis", "Stok Pertalite tidak mencukupi");
+      return;
+    }
+
+    if (jenis === "Pertamax" && qty > warung.stok_pertamax) {
+      Alert.alert("Stok Habis", "Stok Pertamax tidak mencukupi");
+      return;
+    }
+
+    Alert.alert(
+      "Konfirmasi",
+      `Yakin mau menambahkan ${jenis} ${qty} liter ke keranjang?`,
+      [
+        {
+          text: "Batal",
+          style: "cancel",
+        },
+        {
+          text: "Ya",
+          onPress: async () => {
+            const item = {
+              warung_id: warung.id,
+              nama_warung: warung.nama_warung,
+              jenis_bbm: jenis,
+              qty: qty,
+              harga: jenis === "Pertalite" ? 10000 : 14000,
+
+              latitude: parseFloat(warung.latitude),
+              longitude: parseFloat(warung.longitude),
+            };
+
+            try {
+              const existing = await AsyncStorage.getItem("cart");
+              let cart = existing ? JSON.parse(existing) : [];
+
+              cart.push(item);
+
+              await AsyncStorage.setItem("cart", JSON.stringify(cart));
+
+              Alert.alert("Berhasil", "Item masuk ke keranjang");
+            } catch (error) {
+              console.log("Error simpan cart:", error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
@@ -31,7 +88,7 @@ export default function DetailWarungScreen() {
         {/* FOTO WARUNG */}
         <Image
           source={{
-            uri: `http://192.168.1.6:8000/storage/${warung.foto}`,
+            uri: `http://192.168.1.8:8000/storage/${warung.foto}`,
           }}
           style={styles.image}
         />
@@ -66,7 +123,12 @@ export default function DetailWarungScreen() {
 
           {/* PERTALITE */}
           <View style={styles.bbmRow}>
-            <Text style={styles.bbmName}>Pertalite</Text>
+            <View>
+              <Text style={styles.bbmName}>Pertalite</Text>
+              <Text style={styles.stokText}>
+                Stok: {warung.stok_pertalite} L
+              </Text>
+            </View>
 
             <View style={styles.qtyRow}>
               <TouchableOpacity
@@ -78,20 +140,34 @@ export default function DetailWarungScreen() {
               <Text style={styles.qtyText}>{pertalite} L</Text>
 
               <TouchableOpacity
-                onPress={() => setPertalite(pertalite + 1)}
+                onPress={() => {
+                  if (pertalite < warung.stok_pertalite) {
+                    setPertalite(pertalite + 1);
+                  } else {
+                    Alert.alert("Maksimal", "Sudah mencapai batas stok");
+                  }
+                }}
               >
                 <Ionicons name="add-circle-outline" size={26} color="#2563EB" />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.cartButton}>
+            <TouchableOpacity
+              style={styles.cartButton}
+              onPress={() => handleAddToCart("Pertalite", pertalite)}
+            >
               <Ionicons name="cart-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
 
           {/* PERTAMAX */}
           <View style={styles.bbmRow}>
-            <Text style={styles.bbmName}>Pertamax</Text>
+            <View>
+              <Text style={styles.bbmName}>Pertamax</Text>
+              <Text style={styles.stokText}>
+                Stok: {warung.stok_pertamax} L
+              </Text>
+            </View>
 
             <View style={styles.qtyRow}>
               <TouchableOpacity
@@ -103,13 +179,22 @@ export default function DetailWarungScreen() {
               <Text style={styles.qtyText}>{pertamax} L</Text>
 
               <TouchableOpacity
-                onPress={() => setPertamax(pertamax + 1)}
+                onPress={() => {
+                  if (pertamax < warung.stok_pertamax) {
+                    setPertamax(pertamax + 1);
+                  } else {
+                    Alert.alert("Maksimal", "Sudah mencapai batas stok");
+                  }
+                }}
               >
                 <Ionicons name="add-circle-outline" size={26} color="#2563EB" />
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity style={styles.cartButton}>
+            <TouchableOpacity
+              style={styles.cartButton}
+              onPress={() => handleAddToCart("Pertamax", pertamax)}
+            >
               <Ionicons name="cart-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
@@ -193,6 +278,11 @@ const styles = StyleSheet.create({
   bbmName: {
     fontSize: 16,
     fontWeight: "600",
+  },
+
+  stokText: {
+    fontSize: 12,
+    color: "#64748b",
   },
 
   qtyRow: {
