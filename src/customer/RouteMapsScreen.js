@@ -111,7 +111,7 @@ export default function RouteMapsScreen() {
             longitude: parseFloat(warung.longitude),
           }}
           title={warung.nama_warung}
-          pinColor="green"
+          pinColor="yellow"
         />
 
         {/* Garis Rute */}

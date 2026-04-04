@@ -38,9 +38,7 @@ export default function KeranjangScreen() {
   const loadCart = async () => {
     try {
       const data = await AsyncStorage.getItem("cart");
-      if (data) {
-        setCart(JSON.parse(data));
-      }
+      if (data) setCart(JSON.parse(data));
     } catch (error) {
       console.log(error);
     }
@@ -49,7 +47,6 @@ export default function KeranjangScreen() {
   const getUserLocation = async () => {
     try {
       let { status } = await Location.requestForegroundPermissionsAsync();
-
       if (status !== "granted") {
         Alert.alert("Izin lokasi ditolak");
         return;
@@ -64,26 +61,20 @@ export default function KeranjangScreen() {
 
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371;
-
     const dLat = (lat2 - lat1) * (Math.PI / 180);
     const dLon = (lon2 - lon1) * (Math.PI / 180);
-
     const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * (Math.PI / 180)) *
-        Math.cos(lat2 * (Math.PI / 180)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
     return R * c;
   };
 
   useEffect(() => {
     if (userLocation && selectedItems.length > 0) {
       const item = cart[selectedItems[0]];
-
       if (!item || !item.latitude || !item.longitude) return;
 
       const dist = calculateDistance(
@@ -92,18 +83,14 @@ export default function KeranjangScreen() {
         parseFloat(item.latitude),
         parseFloat(item.longitude)
       );
-
       setDistance(dist);
     }
   }, [userLocation, selectedItems]);
 
-  // 🔥 FIX: hanya bisa pilih 1 item
+  // 🔹 FIX: hanya bisa pilih 1 item
   const toggleSelect = (index) => {
-    if (selectedItems.includes(index)) {
-      setSelectedItems([]);
-    } else {
-      setSelectedItems([index]);
-    }
+    if (selectedItems.includes(index)) setSelectedItems([]);
+    else setSelectedItems([index]);
   };
 
   const getSelectedTotal = () => {
@@ -114,13 +101,9 @@ export default function KeranjangScreen() {
     }, 0);
   };
 
-  const getOngkir = () => {
-    return Math.ceil(distance) * 1000;
-  };
+  const getOngkir = () => Math.ceil(distance) * 1000;
 
-  const getGrandTotal = () => {
-    return getSelectedTotal() + getOngkir();
-  };
+  const getGrandTotal = () => getSelectedTotal() + getOngkir();
 
   const handleDelete = (index) => {
     Alert.alert("Hapus", "Yakin ingin menghapus item ini?", [
@@ -130,11 +113,9 @@ export default function KeranjangScreen() {
         onPress: async () => {
           let newCart = [...cart];
           newCart.splice(index, 1);
-
           setCart(newCart);
           await AsyncStorage.setItem("cart", JSON.stringify(newCart));
-
-          setSelectedItems([]); // biar aman
+          setSelectedItems([]);
         },
       },
     ]);
@@ -143,10 +124,14 @@ export default function KeranjangScreen() {
   // =========================
   // CHECKOUT
   // =========================
-
   const handleCheckout = () => {
     if (selectedItems.length === 0) {
       Alert.alert("Pilih item dulu");
+      return;
+    }
+
+    if (!userLocation) {
+      Alert.alert("Lokasi Anda belum tersedia");
       return;
     }
 
@@ -155,10 +140,7 @@ export default function KeranjangScreen() {
       `Total: Rp ${getGrandTotal()}\nYakin checkout pesanan ini?`,
       [
         { text: "Batal" },
-        {
-          text: "Ya",
-          onPress: processCheckout,
-        },
+        { text: "Ya", onPress: processCheckout },
       ]
     );
   };
@@ -179,6 +161,8 @@ export default function KeranjangScreen() {
         ongkir: getOngkir(),
         jarak: distance,
         warung_id: selectedData[0].warung_id,
+        lat: userLocation.latitude,    // ✅ kirim latitude
+        lng: userLocation.longitude,   // ✅ kirim longitude
         items: selectedData.map((item) => ({
           jenis_bbm: item.jenis_bbm,
           qty: item.qty,
@@ -196,9 +180,7 @@ export default function KeranjangScreen() {
 
       setCart(newCart);
       await AsyncStorage.setItem("cart", JSON.stringify(newCart));
-
       setSelectedItems([]);
-
       navigation.navigate("PesananScreen");
     } catch (error) {
       console.log(error.response?.data || error);
@@ -207,10 +189,8 @@ export default function KeranjangScreen() {
   };
 
   // =========================
-
   const renderItem = ({ item, index }) => {
     if (!item) return null;
-
     const isSelected = selectedItems.includes(index);
 
     return (
@@ -228,9 +208,7 @@ export default function KeranjangScreen() {
           <Text style={styles.detail}>
             {item.jenis_bbm} - {item.qty} L
           </Text>
-          <Text style={styles.harga}>
-            Rp {item.qty * item.harga}
-          </Text>
+          <Text style={styles.harga}>Rp {item.qty * item.harga}</Text>
         </View>
 
         <TouchableOpacity onPress={() => handleDelete(index)}>
@@ -273,15 +251,16 @@ export default function KeranjangScreen() {
             Ongkir (COD {distance.toFixed(2)} km): Rp {getOngkir()}
           </Text>
 
-          <Text style={styles.totalText}>
-            Total: Rp {getGrandTotal()}
-          </Text>
+          <Text style={styles.totalText}>Total: Rp {getGrandTotal()}</Text>
 
           <TouchableOpacity
             style={styles.checkoutBtn}
             onPress={handleCheckout}
+            disabled={!userLocation} // tombol disable sampai lokasi tersedia
           >
-            <Text style={styles.checkoutText}>Checkout</Text>
+            <Text style={styles.checkoutText}>
+              {userLocation ? "Checkout" : "Mendapatkan lokasi..."}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -291,23 +270,13 @@ export default function KeranjangScreen() {
   );
 }
 
+// =========================
 // styles tetap
+// =========================
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: "#F1F5F9",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    margin: 16,
-    color: "#1e293b",
-  },
-  empty: {
-    textAlign: "center",
-    marginTop: 50,
-    color: "#64748b",
-  },
+  safeArea: { flex: 1, backgroundColor: "#F1F5F9" },
+  title: { fontSize: 22, fontWeight: "bold", margin: 16, color: "#1e293b" },
+  empty: { textAlign: "center", marginTop: 50, color: "#64748b" },
   card: {
     backgroundColor: "#fff",
     marginHorizontal: 16,
@@ -317,19 +286,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  nama: {
-    fontWeight: "bold",
-    fontSize: 16,
-  },
-  detail: {
-    color: "#475569",
-    marginTop: 4,
-  },
-  harga: {
-    marginTop: 6,
-    fontWeight: "600",
-    color: "#16a34a",
-  },
+  nama: { fontWeight: "bold", fontSize: 16 },
+  detail: { color: "#475569", marginTop: 4 },
+  harga: { marginTop: 6, fontWeight: "600", color: "#16a34a" },
   footer: {
     position: "absolute",
     bottom: 70,
@@ -340,19 +299,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: "#e2e8f0",
   },
-  detailText: {
-    fontSize: 14,
-    color: "#334155",
-  },
-  ongkir: {
-    marginTop: 8,
-    color: "#475569",
-  },
-  totalText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    marginTop: 8,
-  },
+  detailText: { fontSize: 14, color: "#334155" },
+  ongkir: { marginTop: 8, color: "#475569" },
+  totalText: { fontSize: 18, fontWeight: "bold", marginTop: 8 },
   checkoutBtn: {
     backgroundColor: "#2563EB",
     padding: 14,
@@ -360,9 +309,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 10,
   },
-  checkoutText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  checkoutText: { color: "#fff", fontWeight: "bold", fontSize: 16 },
 });

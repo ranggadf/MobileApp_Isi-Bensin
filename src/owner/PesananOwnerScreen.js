@@ -10,74 +10,59 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import OwnerBottomNav from "../component/OwnerBottomNav";
-import api from "../api/AxiosInstance"; // ✅ PAKAI INI
+import api from "../api/AxiosInstance";
+import { useNavigation } from "@react-navigation/native";
 
-export default function PesananOwnerScreen({ navigation }) {
+export default function PesananOwnerScreen() {
   const [orders, setOrders] = useState([]);
+  const navigation = useNavigation();
 
   useEffect(() => {
     fetchOrders();
   }, []);
 
-  
-
-  // 🔥 AMBIL DATA PESANAN OWNER
   const fetchOrders = async () => {
     try {
       const res = await api.get("/owner/orders");
-      setOrders(res.data);
+      // tampilkan hanya yang pending atau sedang diantar
+      const filtered = res.data.filter((order) =>
+        ["pending", "sedang diantar"].includes(order.status)
+      );
+      setOrders(filtered);
     } catch (error) {
-      console.log("Error fetch orders:", error);
+      console.log("Error fetch orders:", error.response?.data || error.message);
     }
   };
 
-  // 🔥 UPDATE STATUS
   const updateStatus = async (id, status) => {
-  const validStatuses = ["ditolak", "dikonfirmasi"];
-  if (!validStatuses.includes(status)) {
-    Alert.alert("Error", "Status tidak valid");
-    return;
-  }
+    try {
+      const res = await api.put(`/orders/${id}/status`, { status });
+      Alert.alert("Berhasil", res.data.message || "Status pesanan diperbarui");
 
-  try {
-    // ✅ sesuaikan route backend
-    const res = await api.put(`/orders/${id}/status`, { status });
-
-    Alert.alert("Berhasil", res.data.message || "Status pesanan diperbarui");
-
-    // 🔥 hapus dari list jika ditolak
-    if (status === "ditolak") {
-      setOrders((prev) => prev.filter((order) => order.id !== id));
-    } else {
+      // update state lokal
       setOrders((prev) =>
         prev.map((order) =>
-          order.id === id ? { ...order, status: status } : order
+          order.id === id ? { ...order, status } : order
         )
       );
+    } catch (error) {
+      console.log("Error update status:", error.response?.data || error.message);
+      Alert.alert("Error", "Gagal update status pesanan");
     }
-  } catch (error) {
-    console.log("Error update status:", error.response?.data || error.message);
-    const msg =
-      error.response?.data?.message ||
-      "Terjadi kesalahan saat mengupdate status";
-    Alert.alert("Error", msg);
-  }
-};
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
-      {/* HEADER */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pesanan Pelanggan</Text>
       </View>
 
-      {/* CONTENT */}
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* 🔥 LOOP DATA */}
         {orders.length === 0 ? (
           <Text style={{ textAlign: "center", marginTop: 20 }}>
             Belum ada pesanan
@@ -118,7 +103,6 @@ export default function PesananOwnerScreen({ navigation }) {
                 </View>
               </View>
 
-              {/* BUTTON */}
               {order.status === "pending" && (
                 <View style={styles.buttonContainer}>
                   <TouchableOpacity
@@ -130,26 +114,48 @@ export default function PesananOwnerScreen({ navigation }) {
 
                   <TouchableOpacity
                     style={styles.confirmButton}
-                    onPress={() => updateStatus(order.id, "dikonfirmasi")}
+                    onPress={() => updateStatus(order.id, "sedang diantar")}
                   >
                     <Text style={styles.confirmText}>Konfirmasi</Text>
                   </TouchableOpacity>
                 </View>
               )}
+
+           {order.status === "sedang diantar" && (
+  <View style={styles.buttonContainer}>
+   <TouchableOpacity
+  style={styles.routeButton}
+  onPress={() => {
+    console.log("ORDER DI KLIK:", order);
+
+    navigation.navigate("DetailPengantaran", {
+      orderId: order.id, // 🔥 INI YANG PALING PENTING
+    });
+  }}
+>
+  <Text style={styles.routeText}>Lihat Rute Pengantaran</Text>
+</TouchableOpacity>
+
+    <TouchableOpacity
+      style={styles.completeButton}
+      onPress={() => updateStatus(order.id, "selesai")}
+    >
+      <Text style={styles.completeText}>Selesai</Text>
+    </TouchableOpacity>
+  </View>
+)}
             </View>
           ))
         )}
       </ScrollView>
 
-      {/* BOTTOM NAV COMPONENT */}
-      <OwnerBottomNav navigation={navigation} active="Pesanan" />
+      <OwnerBottomNav active="Pesanan" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#F4F6F8" },
-
   header: {
     paddingVertical: 15,
     alignItems: "center",
@@ -157,11 +163,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: "#eee",
   },
-
   headerTitle: { fontSize: 18, fontWeight: "bold" },
-
   scrollContent: { flexGrow: 1, padding: 20, paddingBottom: 120 },
-
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
@@ -169,21 +172,15 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     elevation: 3,
   },
-
   sectionTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 15 },
-
   row: { marginBottom: 12 },
-
   label: { fontSize: 14, color: "#888" },
-
   value: { fontSize: 15, fontWeight: "bold" },
-
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 20,
   },
-
   rejectButton: {
     flex: 1,
     backgroundColor: "#E74C3C",
@@ -192,7 +189,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 10,
   },
-
   confirmButton: {
     flex: 1,
     backgroundColor: "#2ECC71",
@@ -200,8 +196,23 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-
+  routeButton: {
+    flex: 1,
+    backgroundColor: "#3498DB",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+    marginRight: 10,
+  },
+  completeButton: {
+    flex: 1,
+    backgroundColor: "#2ECC71",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
   rejectText: { color: "#fff", fontWeight: "bold" },
-
   confirmText: { color: "#fff", fontWeight: "bold" },
+  routeText: { color: "#fff", fontWeight: "bold" },
+  completeText: { color: "#fff", fontWeight: "bold" },
 });

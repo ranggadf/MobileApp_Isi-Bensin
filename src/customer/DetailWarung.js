@@ -88,7 +88,7 @@ export default function DetailWarungScreen() {
         {/* FOTO WARUNG */}
         <Image
           source={{
-            uri: `http://192.168.1.8:8000/storage/${warung.foto}`,
+            uri: `http://10.10.11.98:8000/storage/${warung.foto}`,
           }}
           style={styles.image}
         />

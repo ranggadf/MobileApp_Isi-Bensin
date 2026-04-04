@@ -45,7 +45,7 @@ export default function ProfileOwnerScreen() {
     foto?.uri
       ? foto.uri
       : foto
-      ? `http://192.168.1.11:8000/storage/${foto}`
+      ? `http://10.10.11.98:8000/storage/${foto}`
       : null;
 
   useEffect(() => {

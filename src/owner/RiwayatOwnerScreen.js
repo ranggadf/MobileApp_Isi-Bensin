@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -8,46 +8,37 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import OwnerBottomNav from "../component/OwnerBottomNav";
+import api from "../api/AxiosInstance"; // ✅ Pakai instance axios
 
 export default function RiwayatOwnerScreen({ navigation }) {
+  const [dataRiwayat, setDataRiwayat] = useState([]);
 
-  const dataRiwayat = [
-    {
-      id: "1",
-      nama: "Budi Santoso",
-      bbm: "Pertalite",
-      jumlah: "20 Liter",
-      tanggal: "20 Feb 2026",
-      status: "Selesai",
-    },
-    {
-      id: "2",
-      nama: "Andi Wijaya",
-      bbm: "Pertamax",
-      jumlah: "15 Liter",
-      tanggal: "18 Feb 2026",
-      status: "Ditolak",
-    },
-    {
-      id: "3",
-      nama: "Siti Aisyah",
-      bbm: "Pertalite",
-      jumlah: "10 Liter",
-      tanggal: "17 Feb 2026",
-      status: "Selesai",
-    },
-  ];
+  useEffect(() => {
+    fetchRiwayat();
+  }, []);
+
+  // 🔥 Ambil riwayat transaksi owner
+  const fetchRiwayat = async () => {
+    try {
+      const res = await api.get("/owner/riwayat"); // endpoint Laravel
+      setDataRiwayat(res.data);
+    } catch (error) {
+      console.log("Error fetch riwayat:", error);
+    }
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
       <View style={styles.rowBetween}>
-        <Text style={styles.nama}>{item.nama}</Text>
+        <Text style={styles.nama}>{item.user?.nama || "-"}</Text>
         <Text
           style={[
             styles.status,
-            item.status === "Selesai"
+            item.status === "selesai"
               ? styles.statusSuccess
-              : styles.statusReject,
+              : item.status === "ditolak"
+              ? styles.statusReject
+              : styles.statusPending,
           ]}
         >
           {item.status}
@@ -55,9 +46,15 @@ export default function RiwayatOwnerScreen({ navigation }) {
       </View>
 
       <Text style={styles.detail}>
-        {item.bbm} • {item.jumlah}
+        {item.items.map(i => `${i.jenis_bbm} • ${i.qty} L`).join(", ")}
       </Text>
-      <Text style={styles.tanggal}>{item.tanggal}</Text>
+      <Text style={styles.tanggal}>
+        {new Date(item.created_at).toLocaleDateString("id-ID", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        })}
+      </Text>
     </View>
   );
 
@@ -73,10 +70,15 @@ export default function RiwayatOwnerScreen({ navigation }) {
       {/* LIST */}
       <FlatList
         data={dataRiwayat}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id.toString()}
         renderItem={renderItem}
         contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        ListEmptyComponent={
+          <Text style={{ textAlign: "center", marginTop: 20 }}>
+            Belum ada riwayat transaksi
+          </Text>
+        }
       />
 
       {/* BOTTOM NAV */}
@@ -152,5 +154,10 @@ const styles = StyleSheet.create({
   statusReject: {
     backgroundColor: "#FADBD8",
     color: "#C0392B",
+  },
+
+  statusPending: {
+    backgroundColor: "#FCF3CF",
+    color: "#F1C40F",
   },
 });

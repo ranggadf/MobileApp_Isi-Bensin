@@ -5,6 +5,7 @@ import DashboardOwner from "../owner/DashboardOwner";
 import RiwayatOwnerScreen from "../owner/RiwayatOwnerScreen";
 import ProfileOwnerScreen from "../owner/ProfileOwnerScreen";
 import LoginScreen from "../../screens/LoginScreen";
+import DetailPengantaran from "../owner/DetailPengantaran";
 // nanti bisa tambah:
 // import TambahProduk from "../owner/TambahProduk";
 // import PesananMasuk from "../owner/PesananMasuk";
@@ -20,6 +21,7 @@ export default function OwnerStack() {
       <Stack.Screen name="RiwayatOwner" component={RiwayatOwnerScreen}  />
       <Stack.Screen name="ProfileOwner" component={ProfileOwnerScreen} />
             <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="DetailPengantaran" component={DetailPengantaran} />
 
 
 
