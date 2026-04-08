@@ -17,12 +17,27 @@ export default function PesananScreen() {
 
   useEffect(() => {
     fetchOrders();
+
+    // AUTO REFRESH (biar realtime)
+    const interval = setInterval(() => {
+      fetchOrders();
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const fetchOrders = async () => {
     try {
       const response = await api.get("/my-orders");
-      setOrders(response.data);
+
+      // FILTER: hapus otomatis status selesai & ditolak
+      const filteredOrders = response.data.filter(
+        (order) =>
+          order.status?.toLowerCase() !== "selesai" &&
+          order.status?.toLowerCase() !== "ditolak"
+      );
+
+      setOrders(filteredOrders);
     } catch (error) {
       console.log(error.response?.data || error);
     } finally {

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://10.10.11.98:8000/api';
+const API_BASE_URL = 'http://10.80.2.103:8000/api';
 
 const API = {
   REGISTER: `${API_BASE_URL}/register`,

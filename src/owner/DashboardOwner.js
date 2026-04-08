@@ -45,7 +45,7 @@ export default function DashboardOwner({ navigation }) {
   /* ================= URL FOTO ================= */
   const imageUrl =
     warung?.foto
-      ? `http://10.10.11.98:8000/storage/${warung.foto}`
+      ? `http://10.80.2.103:8000/storage/${warung.foto}`
       : null;
 
   return (
