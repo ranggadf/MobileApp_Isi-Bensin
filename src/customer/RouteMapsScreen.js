@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,6 @@ import {
 } from "react-native";
 
 import MapView, { Marker, Polyline } from "react-native-maps";
-
 import * as Location from "expo-location";
 import axios from "axios";
 
@@ -18,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function RouteMapsScreen() {
   const route = useRoute();
   const navigation = useNavigation();
+  const mapRef = useRef(null);
 
   const { warung } = route.params;
 
@@ -28,10 +28,11 @@ export default function RouteMapsScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getLocation();
+    startTracking();
   }, []);
 
-  const getLocation = async () => {
+  // 🔥 TRACKING REALTIME
+  const startTracking = async () => {
     let { status } = await Location.requestForegroundPermissionsAsync();
 
     if (status !== "granted") {
@@ -39,13 +40,39 @@ export default function RouteMapsScreen() {
       return;
     }
 
+    // ambil posisi awal
     let loc = await Location.getCurrentPositionAsync({});
-
     setLocation(loc.coords);
-
     getRoute(loc.coords);
+    setLoading(false);
+
+    // 🔥 watch position (REALTIME)
+    Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.High,
+        timeInterval: 3000, // update tiap 3 detik
+        distanceInterval: 5, // update jika pindah 5 meter
+      },
+      (newLoc) => {
+        const coords = newLoc.coords;
+
+        setLocation(coords);
+
+        // 🔥 update rute setiap bergerak
+        getRoute(coords);
+
+        // 🔥 auto follow camera
+        mapRef.current?.animateToRegion({
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        });
+      }
+    );
   };
 
+  // 🔥 GET ROUTE DYNAMIC
   const getRoute = async (coords) => {
     try {
       const start = `${coords.longitude},${coords.latitude}`;
@@ -63,14 +90,10 @@ export default function RouteMapsScreen() {
       }));
 
       setRouteCoords(points);
-
       setDistance((data.distance / 1000).toFixed(2));
       setDuration((data.duration / 60).toFixed(0));
-
-      setLoading(false);
     } catch (error) {
       console.log("ERROR ROUTE:", error);
-      setLoading(false);
     }
   };
 
@@ -84,8 +107,8 @@ export default function RouteMapsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-
       <MapView
+        ref={mapRef}
         style={styles.map}
         initialRegion={{
           latitude: location.latitude,
@@ -94,8 +117,7 @@ export default function RouteMapsScreen() {
           longitudeDelta: 0.01,
         }}
       >
-
-        {/* Marker Customer */}
+        {/* 🔵 Marker Customer (bergerak) */}
         <Marker
           coordinate={{
             latitude: location.latitude,
@@ -104,7 +126,7 @@ export default function RouteMapsScreen() {
           title="Lokasi Anda"
         />
 
-        {/* Marker Warung */}
+        {/* 🟡 Marker Warung */}
         <Marker
           coordinate={{
             latitude: parseFloat(warung.latitude),
@@ -114,24 +136,18 @@ export default function RouteMapsScreen() {
           pinColor="yellow"
         />
 
-        {/* Garis Rute */}
+        {/* 🔵 Garis Rute */}
         <Polyline
           coordinates={routeCoords}
           strokeWidth={5}
           strokeColor="#2563EB"
         />
-
       </MapView>
 
-      {/* INFO ROUTE */}
+      {/* INFO */}
       <View style={styles.infoBox}>
-        <Text style={styles.infoText}>
-          Jarak : {distance} km
-        </Text>
-
-        <Text style={styles.infoText}>
-          Estimasi : {duration} menit
-        </Text>
+        <Text style={styles.infoText}>Jarak : {distance} km</Text>
+        <Text style={styles.infoText}>Estimasi : {duration} menit</Text>
 
         <TouchableOpacity
           style={styles.backButton}
@@ -140,13 +156,11 @@ export default function RouteMapsScreen() {
           <Text style={{ color: "#fff" }}>Kembali</Text>
         </TouchableOpacity>
       </View>
-
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-
   container: {
     flex: 1,
   },

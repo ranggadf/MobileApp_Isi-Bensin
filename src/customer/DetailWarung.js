@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Ionicons } from "@expo/vector-icons";
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import api from "../api/AxiosInstance"; // ✅ tambah ini
 
 import CustomerBottomNav from "../component/CustomerBottomNav";
 
@@ -27,10 +27,7 @@ export default function DetailWarungScreen() {
   const [pertalite, setPertalite] = useState(1);
   const [pertamax, setPertamax] = useState(1);
 
-  // 🔥 FUNCTION TAMBAH KE KERANJANG (SUDAH ADA VALIDASI STOK)
   const handleAddToCart = (jenis, qty) => {
-
-    // 🔥 VALIDASI STOK
     if (jenis === "Pertalite" && qty > warung.stok_pertalite) {
       Alert.alert("Stok Habis", "Stok Pertalite tidak mencukupi");
       return;
@@ -45,35 +42,22 @@ export default function DetailWarungScreen() {
       "Konfirmasi",
       `Yakin mau menambahkan ${jenis} ${qty} liter ke keranjang?`,
       [
-        {
-          text: "Batal",
-          style: "cancel",
-        },
+        { text: "Batal", style: "cancel" },
         {
           text: "Ya",
           onPress: async () => {
-            const item = {
-              warung_id: warung.id,
-              nama_warung: warung.nama_warung,
-              jenis_bbm: jenis,
-              qty: qty,
-              harga: jenis === "Pertalite" ? 10000 : 14000,
-
-              latitude: parseFloat(warung.latitude),
-              longitude: parseFloat(warung.longitude),
-            };
-
             try {
-              const existing = await AsyncStorage.getItem("cart");
-              let cart = existing ? JSON.parse(existing) : [];
-
-              cart.push(item);
-
-              await AsyncStorage.setItem("cart", JSON.stringify(cart));
+              await api.post("/cart", {
+                warung_id: warung.id,
+                jenis_bbm: jenis,
+                qty: qty,
+                harga: jenis === "Pertalite" ? 10000 : 14000,
+              });
 
               Alert.alert("Berhasil", "Item masuk ke keranjang");
             } catch (error) {
-              console.log("Error simpan cart:", error);
+              console.log(error.response?.data || error);
+              Alert.alert("Error", "Gagal tambah ke keranjang");
             }
           },
         },
@@ -85,7 +69,6 @@ export default function DetailWarungScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
 
-        {/* FOTO WARUNG */}
         <Image
           source={{
             uri: `http://10.80.2.103:8000/storage/${warung.foto}`,
@@ -94,20 +77,14 @@ export default function DetailWarungScreen() {
         />
 
         <View style={styles.container}>
-          
-          {/* NAMA WARUNG */}
           <Text style={styles.nama}>{warung.nama_warung}</Text>
-
-          {/* ALAMAT */}
           <Text style={styles.alamat}>{warung.alamat}</Text>
 
-          {/* DESKRIPSI */}
           <Text style={styles.deskripsi}>
             Warung disini menyediakan pemesanan dan pengantaran bahan bakar
             bensin. Silahkan pesan bensin dan lanjutkan perjalanan anda
           </Text>
 
-          {/* BUTTON LIHAT RUTE */}
           <TouchableOpacity
             style={styles.routeButton}
             onPress={() =>
@@ -118,7 +95,6 @@ export default function DetailWarungScreen() {
             <Text style={styles.routeText}>Lihat Rute</Text>
           </TouchableOpacity>
 
-          {/* PESAN BBM */}
           <Text style={styles.sectionTitle}>Pesan BBM</Text>
 
           {/* PERTALITE */}
@@ -202,9 +178,7 @@ export default function DetailWarungScreen() {
         </View>
       </ScrollView>
 
-      {/* BOTTOM NAV */}
       <CustomerBottomNav />
-
     </SafeAreaView>
   );
 }
@@ -301,4 +275,5 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 8,
   },
+
 });

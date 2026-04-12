@@ -8,7 +8,6 @@ import {
   Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Ionicons } from "@expo/vector-icons";
 import * as Location from "expo-location";
 
@@ -30,15 +29,30 @@ export default function KeranjangScreen() {
     getUserLocation();
   }, []);
 
-  // reset pilihan kalau cart berubah
   useEffect(() => {
     setSelectedItems([]);
+    setDistance(0);
   }, [cart]);
+
+  useEffect(() => {
+    if (selectedItems.length > 0 && userLocation && cart.length > 0) {
+      const item = cart[selectedItems[0]];
+
+      const dist = calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        parseFloat(item.latitude || 0),
+        parseFloat(item.longitude || 0)
+      );
+
+      setDistance(dist);
+    }
+  }, [selectedItems, userLocation]);
 
   const loadCart = async () => {
     try {
-      const data = await AsyncStorage.getItem("cart");
-      if (data) setCart(JSON.parse(data));
+      const response = await api.get("/cart");
+      setCart(response.data.items || []);
     } catch (error) {
       console.log(error);
     }
@@ -72,25 +86,13 @@ export default function KeranjangScreen() {
     return R * c;
   };
 
-  useEffect(() => {
-    if (userLocation && selectedItems.length > 0) {
-      const item = cart[selectedItems[0]];
-      if (!item || !item.latitude || !item.longitude) return;
-
-      const dist = calculateDistance(
-        userLocation.latitude,
-        userLocation.longitude,
-        parseFloat(item.latitude),
-        parseFloat(item.longitude)
-      );
-      setDistance(dist);
-    }
-  }, [userLocation, selectedItems]);
-
-  // 🔹 FIX: hanya bisa pilih 1 item
   const toggleSelect = (index) => {
-    if (selectedItems.includes(index)) setSelectedItems([]);
-    else setSelectedItems([index]);
+    if (selectedItems.includes(index)) {
+      setSelectedItems([]);
+      setDistance(0);
+    } else {
+      setSelectedItems([index]);
+    }
   };
 
   const getSelectedTotal = () => {
@@ -101,85 +103,92 @@ export default function KeranjangScreen() {
     }, 0);
   };
 
-  const getOngkir = () => Math.ceil(distance) * 1000;
+  // ✅ ONGKIR 1KM = 1000
+  const getOngkir = () => {
+    return Math.ceil(distance) * 1000;
+  };
 
   const getGrandTotal = () => getSelectedTotal() + getOngkir();
 
-  const handleDelete = (index) => {
+  const handleDelete = (id) => {
     Alert.alert("Hapus", "Yakin ingin menghapus item ini?", [
       { text: "Batal" },
       {
         text: "Hapus",
         onPress: async () => {
-          let newCart = [...cart];
-          newCart.splice(index, 1);
-          setCart(newCart);
-          await AsyncStorage.setItem("cart", JSON.stringify(newCart));
-          setSelectedItems([]);
+          try {
+            await api.delete(`/cart/${id}`);
+            loadCart();
+            setSelectedItems([]);
+          } catch (error) {
+            console.log(error);
+          }
         },
       },
     ]);
   };
 
-  // =========================
-  // CHECKOUT
-  // =========================
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (selectedItems.length === 0) {
       Alert.alert("Pilih item dulu");
       return;
     }
 
     if (!userLocation) {
-      Alert.alert("Lokasi Anda belum tersedia");
+      Alert.alert("Lokasi belum tersedia");
       return;
     }
 
+    const item = cart[selectedItems[0]];
+
+    const dist = calculateDistance(
+      userLocation.latitude,
+      userLocation.longitude,
+      parseFloat(item.latitude || 0),
+      parseFloat(item.longitude || 0)
+    );
+
     Alert.alert(
       "Konfirmasi",
-      `Total: Rp ${getGrandTotal()}\nYakin checkout pesanan ini?`,
+      `Jarak: ${dist.toFixed(2)} km\nOngkir: Rp ${(Math.ceil(dist) * 1000).toLocaleString("id-ID")}\nTotal: Rp ${(getSelectedTotal() + Math.ceil(dist) * 1000).toLocaleString("id-ID")}`,
       [
         { text: "Batal" },
-        { text: "Ya", onPress: processCheckout },
+        {
+          text: "Ya",
+          onPress: () => processCheckout(userLocation, dist),
+        },
       ]
     );
   };
 
-  const processCheckout = async () => {
+  const processCheckout = async (coords, dist) => {
     try {
-      const selectedData = selectedItems
-        .map((index) => cart[index])
-        .filter((item) => item);
+      const selectedData = selectedItems.map((i) => cart[i]);
 
       if (!selectedData.length || !selectedData[0]?.warung_id) {
         Alert.alert("Error", "Warung tidak valid");
         return;
       }
 
-      const payload = {
-        total_harga: getGrandTotal(),
-        ongkir: getOngkir(),
-        jarak: distance,
+      await api.post("/orders", {
+        total_harga: getSelectedTotal() + Math.ceil(dist) * 1000,
+        ongkir: Math.ceil(dist) * 1000,
+        jarak: dist,
         warung_id: selectedData[0].warung_id,
-        lat: userLocation.latitude,    // ✅ kirim latitude
-        lng: userLocation.longitude,   // ✅ kirim longitude
+        lat: coords.latitude,
+        lng: coords.longitude,
         items: selectedData.map((item) => ({
           jenis_bbm: item.jenis_bbm,
           qty: item.qty,
           harga: item.harga,
         })),
-      };
+      });
 
-      await api.post("/orders", payload);
+      await api.delete("/cart-clear");
 
       Alert.alert("Sukses", "Pesanan berhasil dibuat!");
 
-      const newCart = cart.filter(
-        (_, index) => !selectedItems.includes(index)
-      );
-
-      setCart(newCart);
-      await AsyncStorage.setItem("cart", JSON.stringify(newCart));
+      loadCart();
       setSelectedItems([]);
       navigation.navigate("PesananScreen");
     } catch (error) {
@@ -188,7 +197,6 @@ export default function KeranjangScreen() {
     }
   };
 
-  // =========================
   const renderItem = ({ item, index }) => {
     if (!item) return null;
     const isSelected = selectedItems.includes(index);
@@ -204,14 +212,14 @@ export default function KeranjangScreen() {
         </TouchableOpacity>
 
         <View style={{ flex: 1, marginLeft: 10 }}>
-          <Text style={styles.nama}>{item.nama_warung}</Text>
+          <Text style={styles.nama}>{item.warung_id}</Text>
           <Text style={styles.detail}>
             {item.jenis_bbm} - {item.qty} L
           </Text>
           <Text style={styles.harga}>Rp {item.qty * item.harga}</Text>
         </View>
 
-        <TouchableOpacity onPress={() => handleDelete(index)}>
+        <TouchableOpacity onPress={() => handleDelete(item.id)}>
           <Ionicons name="trash-outline" size={24} color="red" />
         </TouchableOpacity>
       </View>
@@ -228,7 +236,7 @@ export default function KeranjangScreen() {
         ) : (
           <FlatList
             data={cart}
-            keyExtractor={(_, index) => index.toString()}
+            keyExtractor={(item) => item.id.toString()}
             renderItem={renderItem}
             contentContainerStyle={{ paddingBottom: 180 }}
           />
@@ -241,26 +249,29 @@ export default function KeranjangScreen() {
 
             return (
               <Text key={index} style={styles.detailText}>
-                {item.nama_warung} - {item.qty}L {item.jenis_bbm} = Rp{" "}
-                {item.qty * item.harga}
+                {item.qty}L {item.jenis_bbm} = Rp {item.qty * item.harga}
               </Text>
             );
           })}
 
+          {/* ✅ TAMBAHAN JARAK */}
           <Text style={styles.ongkir}>
-            Ongkir (COD {distance.toFixed(2)} km): Rp {getOngkir()}
+            Jarak: {distance.toFixed(2)} km
           </Text>
 
-          <Text style={styles.totalText}>Total: Rp {getGrandTotal()}</Text>
+          <Text style={styles.ongkir}>
+            Ongkir: Rp {getOngkir().toLocaleString("id-ID")}
+          </Text>
+
+          <Text style={styles.totalText}>
+            Total: Rp {getGrandTotal().toLocaleString("id-ID")}
+          </Text>
 
           <TouchableOpacity
             style={styles.checkoutBtn}
             onPress={handleCheckout}
-            disabled={!userLocation} // tombol disable sampai lokasi tersedia
           >
-            <Text style={styles.checkoutText}>
-              {userLocation ? "Checkout" : "Mendapatkan lokasi..."}
-            </Text>
+            <Text style={styles.checkoutText}>Checkout</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -270,9 +281,6 @@ export default function KeranjangScreen() {
   );
 }
 
-// =========================
-// styles tetap
-// =========================
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F1F5F9" },
   title: { fontSize: 22, fontWeight: "bold", margin: 16, color: "#1e293b" },
