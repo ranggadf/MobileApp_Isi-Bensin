@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -6,213 +6,301 @@ import {
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import Toast from "react-native-toast-message";
+
 import OwnerBottomNav from "../component/OwnerBottomNav";
 import api from "../api/AxiosInstance";
-import { useNavigation } from "@react-navigation/native";
 
 export default function PesananOwnerScreen() {
   const [orders, setOrders] = useState([]);
+  const [tick, setTick] = useState(0);
+  const [expiredNotified, setExpiredNotified] = useState([]);
+
+  const intervalRef = useRef(null);
   const navigation = useNavigation();
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
+  // ================= FETCH ORDERS =================
   const fetchOrders = async () => {
     try {
       const res = await api.get("/owner/orders");
-      // tampilkan hanya yang pending atau sedang diantar
-      const filtered = res.data.filter((order) =>
-        ["pending", "sedang diantar"].includes(order.status)
-      );
+
+      // ❗ hanya tampilkan order aktif (hapus selesai dari list)
+      const filtered = Array.isArray(res.data)
+        ? res.data.filter((order) =>
+            ["pending", "sedang diantar"].includes(
+              order.status?.toLowerCase()
+            )
+          )
+        : [];
+
       setOrders(filtered);
     } catch (error) {
-      console.log("Error fetch orders:", error.response?.data || error.message);
+      console.log("Fetch error:", error.message);
     }
   };
 
+  // ================= UPDATE STATUS =================
   const updateStatus = async (id, status) => {
     try {
-      const res = await api.put(`/orders/${id}/status`, { status });
-      Alert.alert("Berhasil", res.data.message || "Status pesanan diperbarui");
+      await api.put(`/orders/${id}/status`, { status });
 
-      // update state lokal
-      setOrders((prev) =>
-        prev.map((order) =>
-          order.id === id ? { ...order, status } : order
-        )
-      );
+      // jika "selesai", otomatis hilang karena fetch filter
+      await fetchOrders();
     } catch (error) {
-      console.log("Error update status:", error.response?.data || error.message);
-      Alert.alert("Error", "Gagal update status pesanan");
+      console.log("Update error:", error.message);
     }
+  };
+
+  // ================= TIMER (COUNTDOWN REFRESH UI) =================
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTick((prev) => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // ================= POLLING =================
+  useEffect(() => {
+    fetchOrders();
+
+    intervalRef.current = setInterval(fetchOrders, 3000);
+
+    return () => clearInterval(intervalRef.current);
+  }, []);
+
+  // ================= REFRESH SAAT FOCUS =================
+  useFocusEffect(
+    useCallback(() => {
+      fetchOrders();
+    }, [])
+  );
+
+  // ================= RENDER ITEM =================
+  const renderItem = (order) => {
+    const status = order.status?.toLowerCase();
+
+    // ================= TIMER HITUNG MUNDUR =================
+    const now = Date.now();
+    const expireTime = order.expired_at
+      ? new Date(order.expired_at + "Z").getTime()
+      : null;
+
+    const secondsLeft =
+      status === "pending" && expireTime
+        ? Math.max(0, Math.floor((expireTime - now) / 1000))
+        : 0;
+
+    return (
+      <View key={order.id} style={styles.card}>
+        <Text style={styles.titleCard}>Detail Pesanan</Text>
+
+        {/* ⏱ TIMER (TETAP ADA - TIDAK DIHAPUS) */}
+        {status === "pending" && (
+          <Text style={styles.timer}>
+            {secondsLeft > 0
+              ? `Auto batal dalam ${secondsLeft} detik`
+              : "Memproses..."}
+          </Text>
+        )}
+
+        <Text style={styles.text}>
+          Nama: {order.user?.nama}
+        </Text>
+
+        <Text style={styles.text}>
+          BBM: {(order.items || [])
+            .map((i) => i.jenis_bbm)
+            .join(", ")}
+        </Text>
+
+        <Text style={styles.text}>
+          Total: Rp {order.total_harga}
+        </Text>
+
+        {/* STATUS */}
+        <Text style={styles.status}>
+          Status: {status}
+        </Text>
+
+        {/* ================= PENDING ================= */}
+        {status === "pending" && (
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={styles.rejectBtn}
+              onPress={() => updateStatus(order.id, "expired")}
+            >
+              <Text style={styles.btnText}>Tolak</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.acceptBtn}
+              onPress={() =>
+                updateStatus(order.id, "sedang diantar")
+              }
+            >
+              <Text style={styles.btnText}>Konfirmasi</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ================= SEDANG DIANTAR ================= */}
+        {status === "sedang diantar" && (
+          <View style={styles.buttonRow}>
+            <TouchableOpacity
+              style={styles.routeBtn}
+              onPress={() =>
+                navigation.navigate("DetailPengantaran", {
+                  orderId: order.id,
+                  warung: order.warung,
+                })
+              }
+            >
+              <Text style={styles.btnText}>Lihat Rute</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.doneBtn}
+              onPress={() => updateStatus(order.id, "selesai")}
+            >
+              <Text style={styles.btnText}>Selesai</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
 
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Pesanan Pelanggan</Text>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content}>
         {orders.length === 0 ? (
-          <Text style={{ textAlign: "center", marginTop: 20 }}>
-            Belum ada pesanan
-          </Text>
+          <Text style={styles.empty}>Belum ada pesanan aktif</Text>
         ) : (
-          orders.map((order) => (
-            <View key={order.id}>
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Detail Pesanan</Text>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Nama Pelanggan</Text>
-                  <Text style={styles.value}>{order.user?.nama || "-"}</Text>
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Jenis BBM</Text>
-                  <Text style={styles.value}>
-                    {order.items.map((i) => i.jenis_bbm).join(", ")}
-                  </Text>
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Jumlah</Text>
-                  <Text style={styles.value}>
-                    {order.items.map((i) => i.qty + " L").join(", ")}
-                  </Text>
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Total</Text>
-                  <Text style={styles.value}>Rp {order.total_harga}</Text>
-                </View>
-
-                <View style={styles.row}>
-                  <Text style={styles.label}>Status</Text>
-                  <Text style={styles.value}>{order.status}</Text>
-                </View>
-              </View>
-
-              {order.status === "pending" && (
-                <View style={styles.buttonContainer}>
-                  <TouchableOpacity
-                    style={styles.rejectButton}
-                    onPress={() => updateStatus(order.id, "ditolak")}
-                  >
-                    <Text style={styles.rejectText}>Tolak</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={styles.confirmButton}
-                    onPress={() => updateStatus(order.id, "sedang diantar")}
-                  >
-                    <Text style={styles.confirmText}>Konfirmasi</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-
-           {order.status === "sedang diantar" && (
-  <View style={styles.buttonContainer}>
-   <TouchableOpacity
-  style={styles.routeButton}
-  onPress={() => {
-    console.log("ORDER DI KLIK:", order);
-
-    navigation.navigate("DetailPengantaran", {
-      orderId: order.id, // 🔥 INI YANG PALING PENTING
-    });
-  }}
->
-  <Text style={styles.routeText}>Lihat Rute Pengantaran</Text>
-</TouchableOpacity>
-
-    <TouchableOpacity
-      style={styles.completeButton}
-      onPress={() => updateStatus(order.id, "selesai")}
-    >
-      <Text style={styles.completeText}>Selesai</Text>
-    </TouchableOpacity>
-  </View>
-)}
-            </View>
-          ))
+          orders.map(renderItem)
         )}
       </ScrollView>
 
-      <OwnerBottomNav active="Pesanan" />
+      <OwnerBottomNav active="Pesanan" orderCount={orders.length} />
     </SafeAreaView>
   );
 }
 
+// ================= STYLES =================
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#F4F6F8" },
+  container: {
+    flex: 1,
+    backgroundColor: "#F4F6F8",
+  },
+
   header: {
     paddingVertical: 15,
     alignItems: "center",
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderColor: "#eee",
+    borderColor: "#E5E7EB",
   },
-  headerTitle: { fontSize: 18, fontWeight: "bold" },
-  scrollContent: { flexGrow: 1, padding: 20, paddingBottom: 120 },
+
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+  },
+
+  content: {
+    padding: 16,
+    paddingBottom: 120,
+  },
+
   card: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 20,
-    marginBottom: 10,
+    padding: 16,
+    marginBottom: 12,
     elevation: 3,
   },
-  sectionTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 15 },
-  row: { marginBottom: 12 },
-  label: { fontSize: 14, color: "#888" },
-  value: { fontSize: 15, fontWeight: "bold" },
-  buttonContainer: {
+
+  titleCard: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#111827",
+  },
+
+  text: {
+    fontSize: 13,
+    color: "#374151",
+    marginBottom: 2,
+  },
+
+  timer: {
+    color: "#DC2626",
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+
+  status: {
+    marginTop: 8,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  buttonRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
+    marginTop: 14,
   },
-  rejectButton: {
+
+  rejectBtn: {
     flex: 1,
-    backgroundColor: "#E74C3C",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginRight: 10,
-  },
-  confirmButton: {
-    flex: 1,
-    backgroundColor: "#2ECC71",
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: "#EF4444",
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 8,
     alignItems: "center",
   },
-  routeButton: {
+
+  acceptBtn: {
     flex: 1,
-    backgroundColor: "#3498DB",
-    paddingVertical: 14,
-    borderRadius: 10,
-    alignItems: "center",
-    marginRight: 10,
-  },
-  completeButton: {
-    flex: 1,
-    backgroundColor: "#2ECC71",
-    paddingVertical: 14,
-    borderRadius: 10,
+    backgroundColor: "#22C55E",
+    padding: 10,
+    borderRadius: 8,
     alignItems: "center",
   },
-  rejectText: { color: "#fff", fontWeight: "bold" },
-  confirmText: { color: "#fff", fontWeight: "bold" },
-  routeText: { color: "#fff", fontWeight: "bold" },
-  completeText: { color: "#fff", fontWeight: "bold" },
+
+  routeBtn: {
+    flex: 1,
+    backgroundColor: "#2563EB",
+    padding: 10,
+    borderRadius: 8,
+    marginRight: 8,
+    alignItems: "center",
+  },
+
+  doneBtn: {
+    flex: 1,
+    backgroundColor: "#16A34A",
+    padding: 10,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+
+  btnText: {
+    color: "#fff",
+    fontWeight: "600",
+  },
+
+  empty: {
+    textAlign: "center",
+    marginTop: 40,
+    color: "#6B7280",
+  },
 });

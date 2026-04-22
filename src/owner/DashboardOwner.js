@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
+
 import OwnerBottomNav from "../component/OwnerBottomNav";
 import axiosInstance from "../api/AxiosInstance";
 
@@ -21,32 +22,66 @@ export default function DashboardOwner({ navigation }) {
   const insets = useSafeAreaInsets();
 
   const [warung, setWarung] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [showNotif, setShowNotif] = useState(false);
 
-  /* ================= LOAD DATA WARUNG ================= */
+  const isFetching = useRef(false);
+
+  // ================= WARUNG =================
   const loadWarung = async () => {
     try {
       const res = await axiosInstance.get("/owner/warung");
-
-      console.log("DATA WARUNG DASHBOARD:", res.data);
-
       setWarung(res.data);
     } catch (error) {
       console.log("Gagal mengambil data warung");
     }
   };
 
-  /* ================= AUTO REFRESH ================= */
+  // ================= ORDERS (FIX FINAL + ANTI 429) =================
+  const loadOrders = async () => {
+    if (isFetching.current) return;
+
+    isFetching.current = true;
+
+    try {
+      const res = await axiosInstance.get("/owner/orders");
+
+      const data = Array.isArray(res.data) ? res.data : [];
+
+      // 🔥 normalize status + filter pending
+      const pendingOrders = data.filter(
+        (item) => item.status?.toLowerCase() === "pending"
+      );
+
+      setOrders(pendingOrders);
+    } catch (error) {
+      console.log("Gagal mengambil data orders", error.message);
+    } finally {
+      isFetching.current = false;
+    }
+  };
+
+  // ================= FOCUS =================
   useFocusEffect(
     useCallback(() => {
       loadWarung();
+      loadOrders();
     }, [])
   );
 
-  /* ================= URL FOTO ================= */
-  const imageUrl =
-    warung?.foto
-      ? `http://192.168.110.155:8000/storage/${warung.foto}`
-      : null;
+  // ================= POLLING AMAN =================
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadOrders();
+    }, 8000); // 🔥 aman dari 429
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // ================= IMAGE =================
+  const imageUrl = warung?.foto
+    ? `http://192.168.1.8:8000/storage/${warung.foto}`
+    : null;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -56,10 +91,43 @@ export default function DashboardOwner({ navigation }) {
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <Text style={styles.headerTitle}>Beranda</Text>
 
-        <TouchableOpacity style={styles.notifIcon}>
+        {/* NOTIF ICON */}
+        <TouchableOpacity
+          style={styles.notifIcon}
+          onPress={() => setShowNotif(!showNotif)}
+        >
           <Ionicons name="notifications-outline" size={26} color="#000" />
+
+          {/* 🔴 BADGE */}
+          {orders.length > 0 && <View style={styles.badge} />}
         </TouchableOpacity>
       </View>
+
+      {/* NOTIF POPUP */}
+      {showNotif && (
+        <View style={styles.notifBox}>
+          {orders.length === 0 ? (
+            <Text style={styles.notifText}>Belum ada pesanan</Text>
+          ) : (
+            orders.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.notifItem}
+                onPress={() => {
+                  setShowNotif(false);
+                  navigation.navigate("PesananOwner");
+                }}
+              >
+              
+
+                <Text style={styles.notifDesc}>
+                   Pesanan baru masuk! Segera proses 🚀
+                </Text>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      )}
 
       {/* CONTENT */}
       <ScrollView
@@ -67,10 +135,8 @@ export default function DashboardOwner({ navigation }) {
           styles.content,
           { paddingBottom: 120 + insets.bottom },
         ]}
-        showsVerticalScrollIndicator={false}
       >
-        {/* JIKA WARUNG BELUM ADA */}
-        {!warung && (
+        {!warung ? (
           <View style={styles.emptyContainer}>
             <Text style={styles.emptyText}>
               Anda belum membuat warung
@@ -85,29 +151,20 @@ export default function DashboardOwner({ navigation }) {
               </Text>
             </TouchableOpacity>
           </View>
-        )}
-
-        {/* DATA WARUNG */}
-        {warung && (
+        ) : (
           <>
-            {/* FOTO WARUNG */}
             <View style={styles.warungContainer}>
-              {imageUrl ? (
-                <Image
-                  source={{ uri: imageUrl }}
-                  style={styles.warungImage}
-                  resizeMode="cover"
-                />
-              ) : (
-                <Image
-                  source={require("../../assets/profile.jpeg")}
-                  style={styles.warungImage}
-                  resizeMode="cover"
-                />
-              )}
+              <Image
+                source={
+                  imageUrl
+                    ? { uri: imageUrl }
+                    : require("../../assets/profile.jpeg")
+                }
+                style={styles.warungImage}
+              />
 
               <Text style={styles.namaWarung}>
-                {warung?.nama_warung || "Nama Warung"}
+                {warung?.nama_warung}
               </Text>
 
               <TouchableOpacity
@@ -118,37 +175,30 @@ export default function DashboardOwner({ navigation }) {
               </TouchableOpacity>
             </View>
 
-            {/* STOK BBM */}
             <View style={styles.stokContainer}>
               <Text style={styles.stokTitle}>Stok & Harga BBM</Text>
 
-              {/* PERTALITE */}
               <View style={styles.stokItem}>
                 <View>
                   <Text style={styles.stokLabel}>Pertalite</Text>
-
                   <Text style={styles.hargaText}>
-                    Rp {warung?.harga_pertalite || 0} / Liter
+                    Rp {warung?.harga_pertalite} / L
                   </Text>
                 </View>
-
                 <Text style={styles.stokValue}>
-                  {warung?.stok_pertalite || 0} L
+                  {warung?.stok_pertalite} L
                 </Text>
               </View>
 
-              {/* PERTAMAX */}
               <View style={styles.stokItem}>
                 <View>
                   <Text style={styles.stokLabel}>Pertamax</Text>
-
                   <Text style={styles.hargaText}>
-                    Rp {warung?.harga_pertamax || 0} / Liter
+                    Rp {warung?.harga_pertamax} / L
                   </Text>
                 </View>
-
                 <Text style={styles.stokValue}>
-                  {warung?.stok_pertamax || 0} L
+                  {warung?.stok_pertamax} L
                 </Text>
               </View>
             </View>
@@ -156,12 +206,15 @@ export default function DashboardOwner({ navigation }) {
         )}
       </ScrollView>
 
-      {/* BOTTOM NAV */}
-      <OwnerBottomNav navigation={navigation} active="Dashboard" />
+      {/* 🔥 FIX PENTING: kirim orderCount ke bottom nav */}
+      <OwnerBottomNav
+        navigation={navigation}
+        active="Dashboard"
+        orderCount={orders.length}
+      />
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -185,6 +238,45 @@ const styles = StyleSheet.create({
   notifIcon: {
     position: "absolute",
     right: 20,
+  },
+
+  badge: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "red",
+  },
+
+  notifBox: {
+    backgroundColor: "#fff",
+    marginHorizontal: 20,
+    marginTop: 10,
+    borderRadius: 10,
+    padding: 10,
+    elevation: 3,
+  },
+
+  notifItem: {
+    borderBottomWidth: 1,
+    borderColor: "#eee",
+    paddingVertical: 8,
+  },
+
+  notifTitle: {
+    fontWeight: "bold",
+  },
+
+  notifDesc: {
+    fontSize: 13,
+    color: "#666",
+  },
+
+  notifText: {
+    textAlign: "center",
+    color: "#666",
   },
 
   content: {

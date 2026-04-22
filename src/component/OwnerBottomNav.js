@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 
-export default function OwnerBottomNav() {
+export default function OwnerBottomNav({ orderCount = 0 }) {
   const navigation = useNavigation();
   const route = useRoute();
   const insets = useSafeAreaInsets();
@@ -17,11 +17,22 @@ export default function OwnerBottomNav() {
         style={styles.navItem}
         onPress={() => navigation.navigate(screen)}
       >
-        <Ionicons
-          name={icon}
-          size={24}
-          color={isActive ? "#2E86DE" : "#555"}
-        />
+        <View style={{ position: "relative" }}>
+          <Ionicons
+            name={icon}
+            size={24}
+            color={isActive ? "#2E86DE" : "#555"}
+          />
+
+          {/* 🔴 BADGE KHUSUS PESANAN */}
+          {screen === "PesananOwner" && orderCount > 0 && (
+            <View style={styles.badge}>
+              {/* kalau mau angka, aktifkan ini */}
+              {/* <Text style={styles.badgeText}>{orderCount}</Text> */}
+            </View>
+          )}
+        </View>
+
         <Text style={isActive ? styles.activeNav : styles.navText}>
           {label}
         </Text>
@@ -36,7 +47,7 @@ export default function OwnerBottomNav() {
         { paddingBottom: insets.bottom > 0 ? insets.bottom : 15 },
       ]}
     >
-      <NavItem icon="home-outline" label="Home" screen="DashboardOwner" />
+      <NavItem icon="home-outline" label="Beranda" screen="DashboardOwner" />
       <NavItem icon="cart-outline" label="Pesanan" screen="PesananOwner" />
       <NavItem icon="time-outline" label="Riwayat" screen="RiwayatOwner" />
       <NavItem icon="person-outline" label="ProfileOwner" screen="ProfileOwner" />
@@ -69,6 +80,24 @@ const styles = StyleSheet.create({
   activeNav: {
     fontSize: 12,
     color: "#2E86DE",
+    fontWeight: "bold",
+  },
+
+  // 🔴 DOT MERAH
+  badge: {
+    position: "absolute",
+    top: -4,
+    right: -6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "red",
+  },
+
+  // 🔢 kalau pakai angka
+  badgeText: {
+    color: "#fff",
+    fontSize: 8,
     fontWeight: "bold",
   },
 });

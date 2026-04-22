@@ -3,14 +3,18 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  Image,
   ActivityIndicator,
+  FlatList,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import CustomerBottomNav from "../component/CustomerBottomNav";
 import api from "../api/AxiosInstance";
+
+const { height } = Dimensions.get("window");
+
+const CARD_HEIGHT = (height - 200) / 4;
 
 export default function RiwayatScreen() {
   const [riwayatData, setRiwayatData] = useState([]);
@@ -18,7 +22,6 @@ export default function RiwayatScreen() {
 
   useEffect(() => {
     fetchRiwayat();
-
     const interval = setInterval(fetchRiwayat, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -29,10 +32,13 @@ export default function RiwayatScreen() {
 
       const data = Array.isArray(response.data) ? response.data : [];
 
-      // filter hanya selesai & ditolak
       const filtered = data.filter((order) => {
         const status = order.status?.toLowerCase();
-        return status === "selesai" || status === "ditolak";
+        return (
+          status === "selesai" ||
+          status === "ditolak" ||
+          status === "expired"
+        );
       });
 
       setRiwayatData(filtered);
@@ -43,67 +49,97 @@ export default function RiwayatScreen() {
     }
   };
 
-  const renderContent = () => {
-    if (loading) {
-      return <ActivityIndicator size="large" color="#2563EB" />;
+  // 🔥 LABEL STATUS (INI FIX UTAMA)
+  const getStatusLabel = (status) => {
+    switch (status?.toLowerCase()) {
+      case "expired":
+        return "Kadaluarsa";
+      case "ditolak":
+        return "Ditolak";
+      case "selesai":
+        return "Selesai";
+      default:
+        return status;
     }
+  };
 
-    if (riwayatData.length === 0) {
-      return <Text style={styles.empty}>Belum ada riwayat</Text>;
+  // 🔥 STYLE STATUS
+  const getStatusStyle = (status) => {
+    switch (status?.toLowerCase()) {
+      case "ditolak":
+        return { color: "#EF4444", bg: "#fee2e2" };
+      case "expired":
+        return { color: "#6B7280", bg: "#e5e7eb" };
+      case "selesai":
+        return { color: "#16A34A", bg: "#dcfce7" };
+      default:
+        return { color: "#64748b", bg: "#f1f5f9" };
     }
+  };
+
+  const renderItem = ({ item }) => {
+    const status = item.status;
+    const label = getStatusLabel(status);
+    const statusStyle = getStatusStyle(status);
 
     return (
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {riwayatData.map((item) => (
-          <View key={item.id} style={styles.card}>
-            {/* HEADER */}
-            <View style={styles.row}>
-              <Text style={styles.orderId}>ORD-{item.id}</Text>
-              <Text
-                style={[
-                  styles.status,
-                  {
-                    color:
-                      item.status?.toLowerCase() === "ditolak"
-                        ? "#EF4444"
-                        : "#16A34A",
-                  },
-                ]}
-              >
-                {item.status}
-              </Text>
-            </View>
+      <View style={[styles.card, { height: CARD_HEIGHT }]}>
+        {/* TOP */}
+        <View style={styles.topRow}>
+          <Text style={styles.name} numberOfLines={1}>
+            {item?.warung?.nama_warung || "Warung"}
+          </Text>
 
-            {/* ITEM */}
-            <View style={styles.itemRow}>
-              <Image
-                source={{ uri: "https://via.placeholder.com/70" }}
-                style={styles.image}
-              />
+          <Text
+            style={[
+              styles.status,
+              {
+                color: statusStyle.color,
+                backgroundColor: statusStyle.bg,
+              },
+            ]}
+          >
+            {label}
+          </Text>
+        </View>
 
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>
-                  {item?.warung?.nama_warung || "Warung"}
-                </Text>
+        {/* ITEM */}
+        {Array.isArray(item.items) && item.items.length > 0 && (
+          <Text style={styles.itemText}>
+            {item.items[0].jenis_bbm} • {item.items[0].qty}L
+          </Text>
+        )}
 
-                {Array.isArray(item.items) &&
-                  item.items.map((itm, index) => (
-                    <Text key={`${item.id}-${index}`} style={styles.price}>
-                      {itm.jenis_bbm} • {itm.qty}L
-                    </Text>
-                  ))}
-              </View>
-            </View>
+        {/* BOTTOM */}
+        <View style={styles.bottomRow}>
+          <Text style={styles.total}>Rp {item.total_harga}</Text>
 
-            {/* TOTAL */}
-            <Text style={styles.total}>
-              Total: Rp {item.total_harga}
-            </Text>
-          </View>
-        ))}
-      </ScrollView>
+          <Text style={styles.time}>
+            {new Date(item.created_at).toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+      </View>
     );
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loading}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </SafeAreaView>
+    );
+  }
+
+  if (riwayatData.length === 0) {
+    return (
+      <SafeAreaView style={styles.loading}>
+        <Text style={styles.empty}>Belum ada riwayat</Text>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -112,10 +148,15 @@ export default function RiwayatScreen() {
         <Text style={styles.title}>Riwayat Pesanan</Text>
       </View>
 
-      {/* CONTENT */}
-      {renderContent()}
+      {/* LIST */}
+      <FlatList
+        data={riwayatData}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderItem}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      />
 
-      {/* BOTTOM NAV */}
       <CustomerBottomNav />
     </SafeAreaView>
   );
@@ -139,61 +180,69 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
 
-  empty: {
-    textAlign: "center",
-    marginTop: 50,
-    color: "#64748b",
-  },
-
   card: {
     backgroundColor: "#fff",
     marginHorizontal: 16,
     marginBottom: 10,
-    padding: 14,
-    borderRadius: 10,
+    padding: 12,
+    borderRadius: 14,
+    justifyContent: "center",
   },
 
-  row: {
+  topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 8,
-  },
-
-  orderId: {
-    color: "#1e293b",
-    fontWeight: "600",
-  },
-
-  status: {
-    fontWeight: "600",
-  },
-
-  itemRow: {
-    flexDirection: "row",
-    marginBottom: 8,
     alignItems: "center",
+    marginBottom: 4,
   },
 
-  image: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    marginRight: 10,
+  bottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: 6,
   },
 
   name: {
     color: "#1e293b",
     fontWeight: "bold",
+    fontSize: 15,
+    flex: 1,
+    marginRight: 8,
   },
 
-  price: {
+  status: {
+    fontSize: 12,
+    fontWeight: "600",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    overflow: "hidden",
+  },
+
+  itemText: {
+    fontSize: 13,
     color: "#475569",
   },
 
   total: {
-    marginTop: 6,
+    fontSize: 14,
     color: "#16a34a",
-    fontSize: 15,
     fontWeight: "bold",
+  },
+
+  time: {
+    fontSize: 12,
+    color: "#64748b",
+  },
+
+  loading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  empty: {
+    color: "#64748b",
   },
 });

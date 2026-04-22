@@ -8,55 +8,74 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import OwnerBottomNav from "../component/OwnerBottomNav";
-import api from "../api/AxiosInstance"; // ✅ Pakai instance axios
+import api from "../api/AxiosInstance";
 
 export default function RiwayatOwnerScreen({ navigation }) {
   const [dataRiwayat, setDataRiwayat] = useState([]);
+
+  // ================= FETCH RIWAYAT =================
+  const fetchRiwayat = async () => {
+    try {
+      const res = await api.get("/owner/riwayat");
+      setDataRiwayat(res.data);
+    } catch (error) {
+      console.log("Error fetch riwayat:", error.message);
+    }
+  };
 
   useEffect(() => {
     fetchRiwayat();
   }, []);
 
-  // 🔥 Ambil riwayat transaksi owner
-  const fetchRiwayat = async () => {
-    try {
-      const res = await api.get("/owner/riwayat"); // endpoint Laravel
-      setDataRiwayat(res.data);
-    } catch (error) {
-      console.log("Error fetch riwayat:", error);
-    }
-  };
+  // ================= RENDER ITEM =================
+  const renderItem = ({ item }) => {
+    const statusLabel =
+      item.status === "expired"
+        ? "kadaluarsa"
+        : item.status === "ditolak"
+        ? "DITOLAK"
+        : item.status === "selesai"
+        ? "SELESAI"
+        : item.status;
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.rowBetween}>
-        <Text style={styles.nama}>{item.user?.nama || "-"}</Text>
-        <Text
-          style={[
-            styles.status,
-            item.status === "selesai"
-              ? styles.statusSuccess
-              : item.status === "ditolak"
-              ? styles.statusReject
-              : styles.statusPending,
-          ]}
-        >
-          {item.status}
+    return (
+      <View style={styles.card}>
+        {/* HEADER */}
+        <View style={styles.rowBetween}>
+          <Text style={styles.nama}>{item.user?.nama || "-"}</Text>
+
+          <Text
+            style={[
+              styles.status,
+              item.status === "selesai"
+                ? styles.statusSuccess
+                : item.status === "expired" || item.status === "ditolak"
+                ? styles.statusReject
+                : styles.statusPending,
+            ]}
+          >
+            {statusLabel}
+          </Text>
+        </View>
+
+        {/* DETAIL ITEM */}
+        <Text style={styles.detail}>
+          {(item.items || [])
+            .map((i) => `${i.jenis_bbm} • ${i.qty} L`)
+            .join(", ")}
+        </Text>
+
+        {/* TANGGAL */}
+        <Text style={styles.tanggal}>
+          {new Date(item.created_at).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
         </Text>
       </View>
-
-      <Text style={styles.detail}>
-        {item.items.map(i => `${i.jenis_bbm} • ${i.qty} L`).join(", ")}
-      </Text>
-      <Text style={styles.tanggal}>
-        {new Date(item.created_at).toLocaleDateString("id-ID", {
-          day: "numeric",
-          month: "short",
-          year: "numeric",
-        })}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -74,19 +93,19 @@ export default function RiwayatOwnerScreen({ navigation }) {
         renderItem={renderItem}
         contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
         showsVerticalScrollIndicator={false}
+        onRefresh={fetchRiwayat}
+        refreshing={false}
         ListEmptyComponent={
-          <Text style={{ textAlign: "center", marginTop: 20 }}>
+          <Text style={styles.emptyText}>
             Belum ada riwayat transaksi
           </Text>
         }
       />
 
-      {/* BOTTOM NAV */}
       <OwnerBottomNav navigation={navigation} active="Riwayat" />
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -98,12 +117,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     borderBottomWidth: 1,
-    borderColor: "#eee",
+    borderColor: "#E5E7EB",
   },
 
   headerTitle: {
     fontSize: 18,
     fontWeight: "bold",
+    color: "#111827",
+  },
+
+  emptyText: {
+    textAlign: "center",
+    marginTop: 40,
+    color: "#6B7280",
   },
 
   card: {
@@ -123,16 +149,17 @@ const styles = StyleSheet.create({
   nama: {
     fontSize: 16,
     fontWeight: "bold",
+    color: "#111827",
   },
 
   detail: {
-    marginTop: 5,
+    marginTop: 8,
     fontSize: 14,
     color: "#555",
   },
 
   tanggal: {
-    marginTop: 5,
+    marginTop: 6,
     fontSize: 12,
     color: "#999",
   },

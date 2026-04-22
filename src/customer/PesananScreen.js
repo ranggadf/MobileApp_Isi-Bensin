@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -15,29 +16,49 @@ export default function PesananScreen() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const alertedOrders = useRef(new Set());
+  const prevOrders = useRef([]);
+
   useEffect(() => {
     fetchOrders();
-
-    // AUTO REFRESH (biar realtime)
-    const interval = setInterval(() => {
-      fetchOrders();
-    }, 5000);
-
+    const interval = setInterval(fetchOrders, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const fetchOrders = async () => {
     try {
-      const response = await api.get("/my-orders");
+      const res = await api.get("/my-orders");
+      const allOrders = Array.isArray(res.data) ? res.data : [];
 
-      // FILTER: hapus otomatis status selesai & ditolak
-      const filteredOrders = response.data.filter(
-        (order) =>
-          order.status?.toLowerCase() !== "selesai" &&
-          order.status?.toLowerCase() !== "ditolak"
-      );
+      // 🔥 ALERT EXPIRED BARU
+      allOrders.forEach((order) => {
+        const status = order.status?.toLowerCase();
+        const prev = prevOrders.current.find((o) => o.id === order.id);
 
-      setOrders(filteredOrders);
+        const isNewExpired =
+          status === "expired" &&
+          prev &&
+          prev.status?.toLowerCase() !== "expired";
+
+        if (isNewExpired && !alertedOrders.current.has(order.id)) {
+          alertedOrders.current.add(order.id);
+
+          Alert.alert(
+            "Pesanan Kadaluarsa",
+            "Pesanan tidak dikonfirmasi dalam 30 detik"
+          );
+        }
+      });
+
+      prevOrders.current = allOrders;
+
+      // 🔥 FILTER
+      const filtered = allOrders.filter((order) => {
+        const status = order.status?.toLowerCase();
+        return status !== "selesai" && status !== "ditolak" && status !== "expired";
+      });
+
+      setOrders(filtered);
     } catch (error) {
       console.log(error.response?.data || error);
     } finally {
@@ -45,7 +66,46 @@ export default function PesananScreen() {
     }
   };
 
+  // ================= LABEL STATUS =================
+  const getStatusLabel = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "Menunggu Konfirmasi";
+      case "expired":
+        return "Kadaluarsa";
+      case "sedang diantar":
+        return "Sedang Diantar";
+      case "selesai":
+        return "Selesai";
+      case "ditolak":
+        return "Ditolak";
+      default:
+        return status;
+    }
+  };
+
+  // ================= COLOR STATUS =================
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case "pending":
+        return "#F59E0B";
+      case "expired":
+        return "#6B7280";
+      case "sedang diantar":
+        return "#2563EB";
+      case "selesai":
+        return "#16A34A";
+      case "ditolak":
+        return "#EF4444";
+      default:
+        return "#111827";
+    }
+  };
+
   const renderItem = ({ item }) => {
+    const label = getStatusLabel(item.status);
+    const color = getStatusColor(item.status);
+
     return (
       <View style={styles.card}>
         <Text style={styles.nama}>
@@ -58,16 +118,12 @@ export default function PesananScreen() {
           </Text>
         ))}
 
-        <Text style={styles.ongkir}>
-          Ongkir: Rp {item.ongkir}
-        </Text>
+        <Text style={styles.ongkir}>Ongkir: Rp {item.ongkir}</Text>
 
-        <Text style={styles.total}>
-          Total: Rp {item.total_harga}
-        </Text>
+        <Text style={styles.total}>Total: Rp {item.total_harga}</Text>
 
-        <Text style={styles.status}>
-          Status: {item.status}
+        <Text style={[styles.status, { color }]}>
+          Status: {label}
         </Text>
       </View>
     );
@@ -97,6 +153,7 @@ export default function PesananScreen() {
   );
 }
 
+// ================= STYLES =================
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -121,33 +178,38 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
     marginBottom: 10,
     padding: 14,
-    borderRadius: 10,
+    borderRadius: 12,
+    elevation: 2,
   },
 
   nama: {
     fontWeight: "bold",
     fontSize: 16,
     marginBottom: 6,
+    color: "#0f172a",
   },
 
   detail: {
     color: "#475569",
+    fontSize: 13,
   },
 
   ongkir: {
     marginTop: 6,
     color: "#475569",
+    fontSize: 13,
   },
 
   total: {
     marginTop: 6,
     fontWeight: "bold",
     color: "#16a34a",
+    fontSize: 14,
   },
 
   status: {
-    marginTop: 6,
-    fontWeight: "600",
-    color: "#2563EB",
+    marginTop: 10,
+    fontWeight: "700",
+    fontSize: 13,
   },
 });

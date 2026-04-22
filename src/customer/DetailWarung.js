@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Ionicons } from "@expo/vector-icons";
 
-import api from "../api/AxiosInstance"; // ✅ tambah ini
+import { useCart } from "../component/CartContext";
 
 import CustomerBottomNav from "../component/CustomerBottomNav";
 
@@ -27,7 +27,17 @@ export default function DetailWarungScreen() {
   const [pertalite, setPertalite] = useState(1);
   const [pertamax, setPertamax] = useState(1);
 
+  const { addToCart } = useCart();
+
+  const MAX_LITER = 4; // 🔥 TAMBAHAN
+
   const handleAddToCart = (jenis, qty) => {
+    // 🔥 VALIDASI MAX 4 LITER
+    if (qty > MAX_LITER) {
+      Alert.alert("Batas Maksimal", "Maksimal pembelian 4 liter");
+      return;
+    }
+
     if (jenis === "Pertalite" && qty > warung.stok_pertalite) {
       Alert.alert("Stok Habis", "Stok Pertalite tidak mencukupi");
       return;
@@ -47,7 +57,7 @@ export default function DetailWarungScreen() {
           text: "Ya",
           onPress: async () => {
             try {
-              await api.post("/cart", {
+              await addToCart({
                 warung_id: warung.id,
                 jenis_bbm: jenis,
                 qty: qty,
@@ -56,7 +66,7 @@ export default function DetailWarungScreen() {
 
               Alert.alert("Berhasil", "Item masuk ke keranjang");
             } catch (error) {
-              console.log(error.response?.data || error);
+              console.log(error);
               Alert.alert("Error", "Gagal tambah ke keranjang");
             }
           },
@@ -68,10 +78,9 @@ export default function DetailWarungScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
-
         <Image
           source={{
-            uri: `http://10.80.2.103:8000/storage/${warung.foto}`,
+            uri: `http://192.168.1.8:8000/storage/${warung.foto}`,
           }}
           style={styles.image}
         />
@@ -117,6 +126,11 @@ export default function DetailWarungScreen() {
 
               <TouchableOpacity
                 onPress={() => {
+                  if (pertalite >= MAX_LITER) {
+                    Alert.alert("Batas Maksimal", "Maksimal 4 liter");
+                    return;
+                  }
+
                   if (pertalite < warung.stok_pertalite) {
                     setPertalite(pertalite + 1);
                   } else {
@@ -156,6 +170,11 @@ export default function DetailWarungScreen() {
 
               <TouchableOpacity
                 onPress={() => {
+                  if (pertamax >= MAX_LITER) {
+                    Alert.alert("Batas Maksimal", "Maksimal 4 liter");
+                    return;
+                  }
+
                   if (pertamax < warung.stok_pertamax) {
                     setPertamax(pertamax + 1);
                   } else {
@@ -174,7 +193,6 @@ export default function DetailWarungScreen() {
               <Ionicons name="cart-outline" size={22} color="#fff" />
             </TouchableOpacity>
           </View>
-
         </View>
       </ScrollView>
 
@@ -184,7 +202,6 @@ export default function DetailWarungScreen() {
 }
 
 const styles = StyleSheet.create({
-
   safeArea: {
     flex: 1,
     backgroundColor: "#F1F5F9",
@@ -193,6 +210,7 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: 220,
+    resizeMode: "cover",
   },
 
   container: {
@@ -208,18 +226,20 @@ const styles = StyleSheet.create({
   alamat: {
     marginTop: 4,
     color: "#64748b",
+    fontSize: 13,
   },
 
   deskripsi: {
     marginTop: 8,
     color: "#475569",
     lineHeight: 20,
+    fontSize: 13,
   },
 
   routeButton: {
-    marginTop: 10,
+    marginTop: 12,
     backgroundColor: "#2563EB",
-    padding: 10,
+    paddingVertical: 10,
     borderRadius: 8,
     flexDirection: "row",
     alignItems: "center",
@@ -230,6 +250,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     marginLeft: 6,
     fontWeight: "600",
+    fontSize: 14,
   },
 
   sectionTitle: {
@@ -243,20 +264,31 @@ const styles = StyleSheet.create({
     marginTop: 14,
     backgroundColor: "#fff",
     padding: 12,
-    borderRadius: 10,
+    borderRadius: 12,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+
+    // shadow android
+    elevation: 3,
+
+    // shadow ios
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
 
   bbmName: {
     fontSize: 16,
     fontWeight: "600",
+    color: "#0f172a",
   },
 
   stokText: {
     fontSize: 12,
     color: "#64748b",
+    marginTop: 2,
   },
 
   qtyRow: {
@@ -268,12 +300,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 10,
     fontSize: 16,
     fontWeight: "600",
+    color: "#1e293b",
   },
 
   cartButton: {
     backgroundColor: "#16a34a",
     padding: 8,
     borderRadius: 8,
+    marginLeft: 6,
   },
-
 });
