@@ -6,6 +6,8 @@ import {
   ActivityIndicator,
   FlatList,
   Dimensions,
+  TouchableOpacity,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -13,7 +15,6 @@ import CustomerBottomNav from "../component/CustomerBottomNav";
 import api from "../api/AxiosInstance";
 
 const { height } = Dimensions.get("window");
-
 const CARD_HEIGHT = (height - 200) / 4;
 
 export default function RiwayatScreen() {
@@ -49,7 +50,34 @@ export default function RiwayatScreen() {
     }
   };
 
-  // 🔥 LABEL STATUS (INI FIX UTAMA)
+  // 🔥 DELETE HANDLER
+  const handleDelete = (id) => {
+    Alert.alert(
+      "Hapus Riwayat",
+      "Yakin ingin menghapus riwayat ini?",
+      [
+        { text: "Batal", style: "cancel" },
+        {
+          text: "Hapus",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/orders/${id}`);
+
+              // update UI langsung
+              setRiwayatData((prev) =>
+                prev.filter((item) => item.id !== id)
+              );
+            } catch (err) {
+              console.log(err.response?.data || err);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // 🔥 LABEL STATUS
   const getStatusLabel = (status) => {
     switch (status?.toLowerCase()) {
       case "expired":
@@ -114,41 +142,60 @@ export default function RiwayatScreen() {
         <View style={styles.bottomRow}>
           <Text style={styles.total}>Rp {item.total_harga}</Text>
 
-          <Text style={styles.time}>
-            {new Date(item.created_at).toLocaleTimeString("id-ID", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
+          <View style={styles.rightSection}>
+            <Text style={styles.time}>
+              {new Date(item.created_at).toLocaleTimeString("id-ID", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+
+            {/* 🔥 TOMBOL HAPUS */}
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={() => handleDelete(item.id)}
+            >
+              <Text style={styles.deleteText}>Hapus</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.loading}>
-        <ActivityIndicator size="large" color="#2563EB" />
-      </SafeAreaView>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <SafeAreaView style={styles.loading}>
+  //       <ActivityIndicator size="large" color="#2563EB" />
+  //     </SafeAreaView>
+  //   );
+  // }
 
-  if (riwayatData.length === 0) {
-    return (
-      <SafeAreaView style={styles.loading}>
-        <Text style={styles.empty}>Belum ada riwayat</Text>
-      </SafeAreaView>
-    );
-  }
+  // if (riwayatData.length === 0) {
+  //   return (
+  //     <SafeAreaView style={styles.loading}>
+  //       <Text style={styles.empty}>Belum ada riwayat</Text>
+  //     </SafeAreaView>
+  //   );
+  // }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Riwayat Pesanan</Text>
-      </View>
+  <SafeAreaView style={styles.container}>
+    {/* HEADER */}
+    <View style={styles.header}>
+      <Text style={styles.title}>Riwayat Pesanan</Text>
+    </View>
 
-      {/* LIST */}
+    {/* CONTENT */}
+    {loading ? (
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    ) : riwayatData.length === 0 ? (
+      <View style={styles.loading}>
+        <Text style={styles.empty}>Belum ada riwayat</Text>
+      </View>
+    ) : (
       <FlatList
         data={riwayatData}
         keyExtractor={(item) => item.id.toString()}
@@ -156,10 +203,12 @@ export default function RiwayatScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
       />
+    )}
 
-      <CustomerBottomNav />
-    </SafeAreaView>
-  );
+    {/* 🔥 NAVBAR SELALU ADA */}
+    <CustomerBottomNav />
+  </SafeAreaView>
+);
 }
 
 const styles = StyleSheet.create({
@@ -203,6 +252,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
 
+  rightSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
   name: {
     color: "#1e293b",
     fontWeight: "bold",
@@ -234,6 +289,19 @@ const styles = StyleSheet.create({
   time: {
     fontSize: 12,
     color: "#64748b",
+  },
+
+  deleteBtn: {
+    backgroundColor: "#fee2e2",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+
+  deleteText: {
+    color: "#dc2626",
+    fontSize: 12,
+    fontWeight: "600",
   },
 
   loading: {

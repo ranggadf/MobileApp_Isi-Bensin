@@ -24,6 +24,8 @@ export default function DashboardOwner({ navigation }) {
   const [warung, setWarung] = useState(null);
   const [orders, setOrders] = useState([]);
   const [showNotif, setShowNotif] = useState(false);
+  const [totalPendapatan, setTotalPendapatan] = useState(0);
+const [totalPesanan, setTotalPesanan] = useState(0);
 
   const isFetching = useRef(false);
 
@@ -61,13 +63,27 @@ export default function DashboardOwner({ navigation }) {
     }
   };
 
+  // ================= PENDAPATAN =================
+const loadPendapatan = async () => {
+  try {
+    const res = await axiosInstance.get("/owner/pendapatan");
+
+    setTotalPendapatan(res.data.total_pendapatan || 0);
+    setTotalPesanan(res.data.total_pesanan || 0);
+
+  } catch (error) {
+    console.log("Gagal mengambil pendapatan");
+  }
+};
+
   // ================= FOCUS =================
-  useFocusEffect(
-    useCallback(() => {
-      loadWarung();
-      loadOrders();
-    }, [])
-  );
+ useFocusEffect(
+  useCallback(() => {
+    loadWarung();
+    loadOrders();
+    loadPendapatan();
+  }, [])
+);
 
   // ================= POLLING AMAN =================
   useEffect(() => {
@@ -174,6 +190,45 @@ export default function DashboardOwner({ navigation }) {
                 <Text style={styles.kelolaText}>Kelola Warung</Text>
               </TouchableOpacity>
             </View>
+
+            {/* ================= STATISTIK ================= */}
+<View style={styles.statistikContainer}>
+
+  {/* TOTAL PENDAPATAN */}
+  <View style={styles.statCard}>
+    <Ionicons
+      name="wallet-outline"
+      size={28}
+      color="#2ECC71"
+    />
+
+    <Text style={styles.statLabel}>
+      Total Pendapatan
+    </Text>
+
+    <Text style={styles.statValue}>
+      Rp {Number(totalPendapatan).toLocaleString("id-ID")}
+    </Text>
+  </View>
+
+  {/* TOTAL PESANAN */}
+  <View style={styles.statCard}>
+    <Ionicons
+      name="receipt-outline"
+      size={28}
+      color="#2E86DE"
+    />
+
+    <Text style={styles.statLabel}>
+      Pesanan Selesai
+    </Text>
+
+    <Text style={styles.statValue}>
+      {totalPesanan}
+    </Text>
+  </View>
+
+</View>
 
             <View style={styles.stokContainer}>
               <Text style={styles.stokTitle}>Stok & Harga BBM</Text>
@@ -374,4 +429,31 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontWeight: "bold",
   },
+
+  statistikContainer: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginTop: 25,
+},
+
+statCard: {
+  width: "48%",
+  backgroundColor: "#fff",
+  borderRadius: 14,
+  padding: 18,
+  elevation: 3,
+},
+
+statLabel: {
+  marginTop: 10,
+  color: "#666",
+  fontSize: 13,
+},
+
+statValue: {
+  marginTop: 8,
+  fontSize: 18,
+  fontWeight: "bold",
+  color: "#1e293b",
+},
 });
