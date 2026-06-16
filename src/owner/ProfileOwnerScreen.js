@@ -45,7 +45,7 @@ export default function ProfileOwnerScreen() {
     foto?.uri
       ? foto.uri
       : foto
-      ? `http://192.168.1.8:8000/storage/${foto}`
+      ? `https://scrutiny-wisplike-unharmed.ngrok-free.dev/storage/${foto}`
       : null;
 
   useEffect(() => {
@@ -143,21 +143,58 @@ export default function ProfileOwnerScreen() {
       return;
     }
 
-    if (!hargaPertalite || !hargaPertamax) {
-      Alert.alert("Harga bensin harus diisi");
-      return;
-    }
+   // Pertalite harus berpasangan
+if (
+  (stokPertalite && !hargaPertalite) ||
+  (!stokPertalite && hargaPertalite)
+) {
+  Alert.alert(
+    "Pertalite harus isi stok dan harga"
+  );
+  return;
+}
+
+// Pertamax harus berpasangan
+if (
+  (stokPertamax && !hargaPertamax) ||
+  (!stokPertamax && hargaPertamax)
+) {
+  Alert.alert(
+    "Pertamax harus isi stok dan harga"
+  );
+  return;
+}
+
+// Minimal salah satu BBM diisi
+if (!stokPertalite && !stokPertamax) {
+  Alert.alert(
+    "Minimal isi salah satu stok BBM"
+  );
+  return;
+}
 
     const formData = new FormData();
 
     formData.append("nama_warung", namaWarung);
     formData.append("alamat", alamatWarung);
 
-    formData.append("stok_pertalite", stokPertalite);
-    formData.append("stok_pertamax", stokPertamax);
+   // ================= PERTALITE =================
+if (stokPertalite !== "") {
+  formData.append("stok_pertalite", stokPertalite);
+}
 
-    formData.append("harga_pertalite", hargaPertalite);
-    formData.append("harga_pertamax", hargaPertamax);
+if (hargaPertalite !== "") {
+  formData.append("harga_pertalite", hargaPertalite);
+}
+
+// ================= PERTAMAX =================
+if (stokPertamax !== "") {
+  formData.append("stok_pertamax", stokPertamax);
+}
+
+if (hargaPertamax !== "") {
+  formData.append("harga_pertamax", hargaPertamax);
+}
 
     formData.append("latitude", latitude);
     formData.append("longitude", longitude);
@@ -192,10 +229,31 @@ export default function ProfileOwnerScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    await AsyncStorage.clear();
-    navigation.replace("Login");
-  };
+ const handleLogout = async () => {
+  Alert.alert(
+    "Konfirmasi Logout",
+    "Apakah anda yakin ingin logout?",
+    [
+      {
+        text: "Batal",
+        style: "cancel",
+      },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await AsyncStorage.clear();
+
+            navigation.replace("Login");
+          } catch (error) {
+            Alert.alert("Gagal logout");
+          }
+        },
+      },
+    ]
+  );
+};
 
   const tambahPertalite = () => {
     setStokPertalite(String(parseInt(stokPertalite || "0") + 1));
@@ -309,12 +367,16 @@ export default function ProfileOwnerScreen() {
           </View>
 
           <Text style={styles.label}>Harga Pertalite / Liter</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={hargaPertalite}
-            onChangeText={setHargaPertalite}
-          />
+
+<View style={styles.priceContainer}>
+  <Text style={styles.rpText}>Rp</Text>
+  <TextInput
+    style={styles.priceInput}
+    keyboardType="numeric"
+    value={hargaPertalite}
+    onChangeText={setHargaPertalite}
+  />
+</View>
 
           <Text style={styles.label}>Stok Pertamax</Text>
 
@@ -339,12 +401,16 @@ export default function ProfileOwnerScreen() {
           </View>
 
           <Text style={styles.label}>Harga Pertamax / Liter</Text>
-          <TextInput
-            style={styles.input}
-            keyboardType="numeric"
-            value={hargaPertamax}
-            onChangeText={setHargaPertamax}
-          />
+
+<View style={styles.priceContainer}>
+  <Text style={styles.rpText}>Rp</Text>
+  <TextInput
+    style={styles.priceInput}
+    keyboardType="numeric"
+    value={hargaPertamax}
+    onChangeText={setHargaPertamax}
+  />
+</View>
 
           <TouchableOpacity style={styles.saveButton} onPress={simpanWarung}>
             <Text style={styles.buttonText}>
@@ -506,4 +572,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "bold",
   },
+  priceContainer: {
+  flexDirection: "row",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#ddd",
+  borderRadius: 8,
+  backgroundColor: "#fafafa",
+  paddingHorizontal: 12,
+},
+
+rpText: {
+  fontSize: 16,
+  fontWeight: "bold",
+  color: "#555",
+  marginRight: 8,
+},
+
+priceInput: {
+  flex: 1,
+  paddingVertical: 12,
+},
 });

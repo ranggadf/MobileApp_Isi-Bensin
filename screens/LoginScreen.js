@@ -11,6 +11,8 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "../src/api/config";
 import Ionicons from "react-native-vector-icons/Ionicons";
+import { registerForPushNotificationsAsync } 
+from "../src/component/notif";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -20,39 +22,92 @@ export default function LoginScreen({ navigation }) {
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
-    setError("");
+  setError("");
 
-    if (!email || !password) {
-      setError("Email dan password wajib diisi");
-      return;
-    }
+  if (!email || !password) {
+    setError("Email dan password wajib diisi");
+    return;
+  }
 
-    try {
-      const res = await axios.post(API.LOGIN, { email, password });
+  try {
 
-      if (res.data.success) {
-        const token = res.data.token;
+    // LOGIN
+    const res = await axios.post(API.LOGIN, {
+      email,
+      password,
+    });
 
-        await AsyncStorage.setItem("token", token);
+    if (res.data.success) {
 
-        const role = res.data.data.role;
+      // TOKEN LOGIN
+      const authToken = res.data.token;
 
-        if (role === 1) {
-          navigation.replace("CustomerStack");
-        } else if (role === 2) {
-          navigation.replace("OwnerStack");
-        }
+      // SIMPAN TOKEN LOGIN
+      await AsyncStorage.setItem("token", authToken);
+
+      // DATA USER
+      const user = res.data.data;
+
+      // =========================
+      // SIMPAN EXPO TOKEN
+      // =========================
+      try {
+
+        const expoToken =
+          await registerForPushNotificationsAsync();
+
+        console.log("EXPO TOKEN:", expoToken);
+
+        await axios.post(
+          "https://scrutiny-wisplike-unharmed.ngrok-free.dev/api/save-expo-token",
+          {
+            user_id: user.id,
+            expo_token: expoToken,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+
+        console.log("TOKEN BERHASIL DISIMPAN");
+
+      } catch (notifError) {
+
+  console.log("ERROR SAVE TOKEN FULL:");
+
+  console.log(notifError);
+
+  console.log("RESPONSE:");
+  console.log(notifError.response?.data);
+
+  console.log("MESSAGE:");
+  console.log(notifError.message);
+}
+
+      // =========================
+      // NAVIGASI
+      // =========================
+      if (user.role === 1) {
+        navigation.replace("CustomerStack");
+      } else if (user.role === 2) {
+        navigation.replace("OwnerStack");
       }
-    } catch (err) {
-      console.log(err.response ? err.response.data : err);
-      setError("Email atau password salah");
     }
-  };
+
+  } catch (err) {
+
+    console.log(err.response?.data || err);
+
+    setError("Email atau password salah");
+  }
+};
 
   return (
     <View style={styles.container}>
       <Image
-        source={require("../assets/logo.png")}
+        source={require("../assets/logo.jpeg")}
         style={styles.logo}
         resizeMode="contain"
       />

@@ -21,7 +21,7 @@ import api from "../api/AxiosInstance";
 
 
 // base URL untuk gambar dari backend Laravel
-const BASE_URL = "http://192.168.1.8:8000";
+const BASE_URL = "https://scrutiny-wisplike-unharmed.ngrok-free.dev";
 
 export default function DashboardCustomerScreen() {
 

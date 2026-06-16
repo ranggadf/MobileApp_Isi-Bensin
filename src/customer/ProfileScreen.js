@@ -72,18 +72,47 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.clear();
+const handleLogout = async () => {
+  Alert.alert(
+    "Keluar",
+    "Yakin ingin keluar dari akun?",
+    [
+      {
+        text: "Batal",
+        style: "cancel",
+      },
+      {
+        text: "Keluar",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            // 🔥 OPTIONAL
+            // kalau ada endpoint logout Laravel
+            // await axiosInstance.post("/logout");
 
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "AuthStack" }],
-      });
-    } catch (error) {
-      Alert.alert("Logout gagal");
-    }
-  };
+            // 🔥 HAPUS STORAGE
+            await AsyncStorage.clear();
+
+            // 🔥 RESET NAVIGATION
+            navigation.reset({
+              index: 0,
+              routes: [
+                {
+                  name: "AuthStack",
+                },
+              ],
+            });
+          } catch (error) {
+            Alert.alert(
+              "Error",
+              "Keluar gagal"
+            );
+          }
+        },
+      },
+    ]
+  );
+};
 
   if (loading) {
     return (

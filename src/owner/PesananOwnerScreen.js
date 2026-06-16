@@ -112,6 +112,10 @@ export default function PesananOwnerScreen() {
         </Text>
 
         <Text style={styles.text}>
+         No HP: {order.no_hp || "-"}
+        </Text>
+
+        <Text style={styles.text}>
           BBM: {(order.items || [])
             .map((i) => i.jenis_bbm)
             .join(", ")}

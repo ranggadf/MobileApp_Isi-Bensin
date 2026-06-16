@@ -6,7 +6,7 @@ export default function RegisterChoiceScreen({ navigation }) {
     <View style={styles.container}>
       {/* Logo Aplikasi */}
       <Image 
-        source={require('../assets/logo.png')} // nanti ganti sesuai logo kamu
+        source={require('../assets/logo.jpeg')} // nanti ganti sesuai logo kamu
         style={styles.logo}
       />
 

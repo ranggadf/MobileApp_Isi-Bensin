@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://192.168.1.8:8000/api';
+const API_BASE_URL = 'https://scrutiny-wisplike-unharmed.ngrok-free.dev/api';
 
 const API = {
   REGISTER: `${API_BASE_URL}/register`,

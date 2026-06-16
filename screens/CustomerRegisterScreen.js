@@ -43,7 +43,7 @@ export default function CustomerRegisterScreen({ navigation }) {
   return (
     <ScrollView contentContainerStyle={styles.container}>
 
-      <Image source={require('../assets/logo.png')} style={styles.logo} />
+      <Image source={require('../assets/logo.jpeg')} style={styles.logo} />
 
       <Text style={styles.title}>Registrasi Pelanggan</Text>
 

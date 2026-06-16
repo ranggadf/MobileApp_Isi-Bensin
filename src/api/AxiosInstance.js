@@ -5,31 +5,32 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // 🔹 MEMBUAT AXIOS INSTANCE
 // =========================
 const axiosInstance = axios.create({
-  // baseURL = alamat API backend Laravel
-  // semua request akan otomatis diarahkan ke sini
-  baseURL: "http://192.168.1.8:8000/api",
+  baseURL: "https://scrutiny-wisplike-unharmed.ngrok-free.dev/api",
+
+  headers: {
+    Accept: "application/json",
+
+    // bypass warning ngrok
+    "ngrok-skip-browser-warning": "true",
+  },
 });
 
 // =========================
 // 🔹 INTERCEPTOR REQUEST
 // =========================
-// interceptor = middleware yang jalan SEBELUM request dikirim
 axiosInstance.interceptors.request.use(
   async (config) => {
-
-    // ambil token dari AsyncStorage (local storage mobile)
+    // ambil token login
     const token = await AsyncStorage.getItem("token");
 
-    // jika token ada, tambahkan ke header Authorization
+    // tambahkan token jika ada
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
 
-    // lanjutkan request yang sudah dimodifikasi
     return config;
   },
 
-  // jika terjadi error saat request setup
   (error) => Promise.reject(error)
 );
 

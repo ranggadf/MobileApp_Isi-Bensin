@@ -1,102 +1,123 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import api from "../api/AxiosInstance"; 
-// axios instance (sudah otomatis pakai token + baseURL)
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
+import api from "../api/AxiosInstance";
 
 // =========================
 // 🔹 MEMBUAT CONTEXT CART
 // =========================
 const CartContext = createContext();
 
-
 // =========================
-// 🔹 PROVIDER (PEMBUNGKUS APP)
+// 🔹 PROVIDER
 // =========================
-export const CartProvider = ({ children }) => {
-
-  // state untuk menyimpan isi cart
-  const [cartItems, setCartItems] = useState([]);
-
+export const CartProvider = ({
+  children,
+}) => {
+  // 🔥 STATE CART
+  const [cartItems, setCartItems] =
+    useState([]);
 
   // =========================
-  // 🔹 AMBIL DATA CART DARI BACKEND
+  // 🔹 LOAD CART
   // =========================
   const loadCart = async () => {
     try {
-      // request ke backend Laravel
       const res = await api.get("/cart");
 
-      // ambil data items dari response
-      setCartItems(res.data.items || []);
+      setCartItems(
+        res.data.items || []
+      );
     } catch (err) {
-      console.log("LOAD CART ERROR:", err);
+      console.log(
+        "LOAD CART ERROR:",
+        err
+      );
     }
   };
 
-
   // =========================
-  // 🔹 TAMBAH ITEM KE CART
+  // 🔹 ADD CART
   // =========================
   const addToCart = async (data) => {
     try {
-      // kirim data item ke backend
       await api.post("/cart", data);
 
-      // setelah tambah → sync ulang cart dari backend
       await loadCart();
     } catch (err) {
-      console.log("ADD CART ERROR:", err);
+      console.log(
+        "ADD CART ERROR:",
+        err
+      );
     }
   };
 
-
   // =========================
-  // 🔹 HAPUS ITEM DARI CART
+  // 🔹 REMOVE CART
   // =========================
-  const removeFromCart = async (id) => {
+  const removeFromCart = async (
+    id
+  ) => {
     try {
-      // hapus item berdasarkan id
       await api.delete(`/cart/${id}`);
 
-      // sync ulang data cart
       await loadCart();
     } catch (err) {
-      console.log("DELETE ERROR:", err);
+      console.log(
+        "DELETE ERROR:",
+        err
+      );
     }
   };
 
-
   // =========================
-  // 🔹 KOSONGKAN CART
+  // 🔹 CLEAR CART
   // =========================
   const clearCart = async () => {
     try {
-      // request hapus semua item cart
       await api.delete("/cart-clear");
 
-      // langsung kosongkan state lokal
       setCartItems([]);
     } catch (err) {
-      console.log("CLEAR ERROR:", err);
+      console.log(
+        "CLEAR ERROR:",
+        err
+      );
     }
   };
 
+  // =========================
+  // 🔥 TOTAL ITEM CART
+  // =========================
+  const cartCount = useMemo(() => {
+    return cartItems.reduce(
+      (total, item) =>
+        total + (item.qty || 1),
+      0
+    );
+  }, [cartItems]);
 
   // =========================
-  // 🔹 AUTO LOAD SAAT APP START
+  // 🔹 AUTO LOAD
   // =========================
   useEffect(() => {
     loadCart();
   }, []);
 
-
   // =========================
-  // 🔹 PROVIDE DATA KE SELURUH APP
+  // 🔹 PROVIDER
   // =========================
   return (
     <CartContext.Provider
       value={{
         cartItems,
+        cartCount,
+
         loadCart,
         addToCart,
         removeFromCart,
@@ -108,8 +129,8 @@ export const CartProvider = ({ children }) => {
   );
 };
 
-
 // =========================
-// 🔹 CUSTOM HOOK (biar gampang dipakai)
+// 🔹 CUSTOM HOOK
 // =========================
-export const useCart = () => useContext(CartContext);
+export const useCart = () =>
+  useContext(CartContext);

@@ -31,13 +31,20 @@ const [totalPesanan, setTotalPesanan] = useState(0);
 
   // ================= WARUNG =================
   const loadWarung = async () => {
-    try {
-      const res = await axiosInstance.get("/owner/warung");
+  try {
+    const res = await axiosInstance.get("/owner/warung");
+
+    if (res.data && res.data.nama_warung) {
       setWarung(res.data);
-    } catch (error) {
-      console.log("Gagal mengambil data warung");
+    } else {
+      setWarung(null);
     }
-  };
+
+  } catch (error) {
+    console.log("Gagal mengambil data warung");
+    setWarung(null);
+  }
+};
 
   // ================= ORDERS (FIX FINAL + ANTI 429) =================
   const loadOrders = async () => {
@@ -96,7 +103,7 @@ const loadPendapatan = async () => {
 
   // ================= IMAGE =================
   const imageUrl = warung?.foto
-    ? `http://192.168.1.8:8000/storage/${warung.foto}`
+    ? `https://scrutiny-wisplike-unharmed.ngrok-free.dev/storage/${warung.foto}`
     : null;
 
   return (
@@ -152,22 +159,22 @@ const loadPendapatan = async () => {
           { paddingBottom: 120 + insets.bottom },
         ]}
       >
-        {!warung ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
-              Anda belum membuat warung
-            </Text>
+       {!warung || !warung.nama_warung ? (
+  <View style={styles.emptyContainer}>
+    <Text style={styles.emptyText}>
+      Anda belum membuat warung
+    </Text>
 
-            <TouchableOpacity
-              style={styles.createButton}
-              onPress={() => navigation.navigate("ProfileOwner")}
-            >
-              <Text style={styles.createButtonText}>
-                Buat Warung Sekarang
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
+    <TouchableOpacity
+      style={styles.createButton}
+      onPress={() => navigation.navigate("ProfileOwner")}
+    >
+      <Text style={styles.createButtonText}>
+        Buat Warung Sekarang
+      </Text>
+    </TouchableOpacity>
+  </View>
+) : (
           <>
             <View style={styles.warungContainer}>
               <Image
