@@ -10,7 +10,7 @@ import {
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API from "../src/api/config";
-import Ionicons from "react-native-vector-icons/Ionicons";
+import { Ionicons } from "@expo/vector-icons";
 import { registerForPushNotificationsAsync } 
 from "../src/component/notif";
 
@@ -59,7 +59,7 @@ export default function LoginScreen({ navigation }) {
         console.log("EXPO TOKEN:", expoToken);
 
         await axios.post(
-          "https://scrutiny-wisplike-unharmed.ngrok-free.dev/api/save-expo-token",
+    "http://192.168.1.7:8000/api/save-expo-token",
           {
             user_id: user.id,
             expo_token: expoToken,

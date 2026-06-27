@@ -6,7 +6,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import Toast from "react-native-toast-message";
-
 import * as Notifications from "expo-notifications";
 
 import { OrderProvider } from "./src/component/OrderContext";
@@ -16,111 +15,64 @@ import OwnerStack from "./src/navigation/OwnerStack";
 import AuthStack from "./src/navigation/AuthStack";
 import CustomerStack from "./src/navigation/CustomerStack";
 
-import {
-  registerForPushNotificationsAsync,
-} from "./src/component/notif";
-
 const Stack = createNativeStackNavigator();
 
-export default function App() {
+/**
+ * Agar notifikasi tetap muncul saat aplikasi sedang dibuka
+ */
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
-  const notificationListener = useRef();
-  const responseListener = useRef();
+export default function App() {
+  const notificationListener = useRef(null);
+  const responseListener = useRef(null);
 
   useEffect(() => {
-
-   async function init() {
-
-  try {
-
-    // ==============================
-    // REGISTER TOKEN
-    // ==============================
-    const token =
-      await registerForPushNotificationsAsync();
-
-    console.log("TOKEN OWNER:", token);
-
-    // ==============================
-    // TEST NOTIF LOCAL
-    // ==============================
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "TEST NOTIF",
-        body: "Notif local berhasil",
-        sound: "default",
-      },
-      trigger: null,
-    });
-
-    // ==============================
-    // LISTENER SAAT NOTIF MASUK
-    // ==============================
+    // Saat notifikasi diterima
     notificationListener.current =
-      Notifications.addNotificationReceivedListener(
-        (notification) => {
+      Notifications.addNotificationReceivedListener((notification) => {
+        console.log("NOTIFICATION RECEIVED:");
+        console.log(notification);
+      });
 
-          console.log(
-            "NOTIF MASUK:",
-            notification
-          );
-        }
-      );
-
-    // ==============================
-    // LISTENER SAAT NOTIF DIKLIK
-    // ==============================
+    // Saat notifikasi ditekan
     responseListener.current =
-      Notifications.addNotificationResponseReceivedListener(
-        (response) => {
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log("NOTIFICATION CLICKED:");
+        console.log(response);
+      });
 
-          console.log(
-            "NOTIF DIKLIK:",
-            response
-          );
-        }
-      );
-
-  } catch (error) {
-
-    console.log(
-      "ERROR INIT NOTIFICATION:",
-      error
-    );
-  }
-}
-
-    init();
-
-    // ==============================
-    // CLEANUP LISTENER
-    // ==============================
-        // ==============================
-    // CLEANUP LISTENER
-    // ==============================
     return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(
+          notificationListener.current
+        );
+      }
 
-      notificationListener.current?.remove();
-
-      responseListener.current?.remove();
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(
+          responseListener.current
+        );
+      }
     };
   }, []);
 
   return (
     <SafeAreaProvider>
-
       <CartProvider>
-
         <OrderProvider>
-
           <NavigationContainer>
-
             <Stack.Navigator
               screenOptions={{
                 headerShown: false,
               }}
             >
-
               <Stack.Screen
                 name="AuthStack"
                 component={AuthStack}
@@ -135,17 +87,12 @@ export default function App() {
                 name="OwnerStack"
                 component={OwnerStack}
               />
-
             </Stack.Navigator>
-
           </NavigationContainer>
 
           <Toast />
-
         </OrderProvider>
-
       </CartProvider>
-
     </SafeAreaProvider>
   );
 }

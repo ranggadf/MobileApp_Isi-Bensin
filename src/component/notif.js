@@ -3,41 +3,32 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
 
+// Handler notifikasi
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
 });
 
 export async function registerForPushNotificationsAsync() {
-
   try {
-
     // =========================
     // ANDROID CHANNEL
     // =========================
     if (Platform.OS === "android") {
-
-    await Notifications.setNotificationChannelAsync(
-  "default",
-  {
-    name: "default",
-
-    importance:
-      Notifications.AndroidImportance.MAX,
-
-    sound: "default",
-
-    enableVibrate: true,
-
-    vibrationPattern: [0, 250, 250, 250],
-
-    lockscreenVisibility:
-      Notifications.AndroidNotificationVisibility.PUBLIC,
-  }
-);
+      await Notifications.setNotificationChannelAsync("default", {
+        name: "default",
+        importance: Notifications.AndroidImportance.MAX,
+        sound: "default",
+        enableLights: true,
+        enableVibrate: true,
+        vibrationPattern: [0, 250, 250, 250],
+        lockscreenVisibility:
+          Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
     }
 
     // =========================
@@ -45,7 +36,7 @@ export async function registerForPushNotificationsAsync() {
     // =========================
     if (!Device.isDevice) {
       alert("Harus menggunakan device fisik");
-      return;
+      return null;
     }
 
     // =========================
@@ -57,7 +48,6 @@ export async function registerForPushNotificationsAsync() {
     let finalStatus = existingStatus;
 
     if (existingStatus !== "granted") {
-
       const { status } =
         await Notifications.requestPermissionsAsync();
 
@@ -65,10 +55,8 @@ export async function registerForPushNotificationsAsync() {
     }
 
     if (finalStatus !== "granted") {
-
       alert("Izin notifikasi ditolak");
-
-      return;
+      return null;
     }
 
     // =========================
@@ -82,13 +70,12 @@ export async function registerForPushNotificationsAsync() {
 
     const token = tokenData.data;
 
-    console.log("TOKEN:", token);
+    console.log("EXPO TOKEN:", token);
 
     return token;
 
   } catch (error) {
-
-    console.log(error);
-
+    console.log("REGISTER NOTIFICATION ERROR:", error);
+    return null;
   }
 }

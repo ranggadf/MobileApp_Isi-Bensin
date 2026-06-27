@@ -103,7 +103,7 @@ const loadPendapatan = async () => {
 
   // ================= IMAGE =================
   const imageUrl = warung?.foto
-    ? `https://scrutiny-wisplike-unharmed.ngrok-free.dev/storage/${warung.foto}`
+    ? `http://192.168.1.7:8000/storage/${warung.foto}`
     : null;
 
   return (

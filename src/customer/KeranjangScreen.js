@@ -191,7 +191,13 @@ export default function KeranjangScreen() {
 
 
   // ongkir berdasarkan jarak
-  const getOngkir = () => Math.ceil(distance) * 1000;
+  const getOngkir = () => {
+  if (distance < 1) {
+    return 0;
+  }
+
+  return Math.round(distance) * 1000;
+};
 
   // total akhir
   const getGrandTotal = () => getSelectedTotal() + getOngkir();

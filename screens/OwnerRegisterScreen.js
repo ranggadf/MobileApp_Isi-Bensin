@@ -31,54 +31,87 @@ export default function OwnerRegisterScreen({ navigation }) {
   const [errors, setErrors] = useState({});
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value,
-    }));
+  setFormData(prev => ({
+    ...prev,
+    [field]: value,
+  }));
 
-    setErrors(prev => ({
-      ...prev,
-      [field]: "",
-    }));
-  };
+  let error = "";
 
-  const validate = () => {
-    let newErrors = {};
-
-    // ================= NAMA =================
-    if (!formData.nama.trim()) {
-      newErrors.nama = "Nama wajib diisi";
-    }
-
-    // ================= EMAIL =================
-    if (!formData.email.trim()) {
-      newErrors.email = "Email wajib diisi";
-    } else {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-      if (!emailRegex.test(formData.email)) {
-        newErrors.email = "Format email tidak valid";
+  switch (field) {
+    case "nama":
+      if (!value.trim()) {
+        error = "Nama wajib diisi";
       }
-    }
+      break;
 
-    // ================= NO HP =================
-    if (!formData.no_hp.trim()) {
-      newErrors.no_hp = "Nomor HP wajib diisi";
-    } else if (formData.no_hp.length < 10) {
-      newErrors.no_hp = "Nomor HP terlalu pendek";
-    }
+    case "email":
+      if (!value.trim()) {
+        error = "Email wajib diisi";
+      } else if (
+        !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)
+      ) {
+        error = "Format email tidak valid";
+      }
+      break;
 
-    // ================= PASSWORD =================
-    if (!formData.password) {
-      newErrors.password = "Password wajib diisi";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password minimal 6 karakter";
-    }
+    case "no_hp":
+      if (!value.trim()) {
+        error = "Nomor HP wajib diisi";
+      } else if (value.replace(/\D/g, "").length < 10) {
+        error = "Nomor HP tidak lengkap";
+      }
+      break;
 
-    setErrors(newErrors);
+    case "password":
+      if (!value) {
+        error = "Password wajib diisi";
+      } else if (value.length < 8) {
+        error = "Password minimal 8 karakter";
+      }
+      break;
+  }
 
-    return Object.keys(newErrors).length === 0;
-  };
+  setErrors(prev => ({
+    ...prev,
+    [field]: error,
+  }));
+};
+
+const validate = () => {
+
+  const newErrors = {};
+
+  if (!formData.nama.trim()) {
+    newErrors.nama = "Nama wajib diisi";
+  }
+
+  if (!formData.email.trim()) {
+    newErrors.email = "Email wajib diisi";
+  } else if (
+    !/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)
+  ) {
+    newErrors.email = "Format email tidak valid";
+  }
+
+  if (!formData.no_hp.trim()) {
+    newErrors.no_hp = "Nomor HP wajib diisi";
+  } else if (
+    formData.no_hp.replace(/\D/g, "").length < 10
+  ) {
+    newErrors.no_hp = "Nomor HP tidak lengkap";
+  }
+
+  if (!formData.password) {
+    newErrors.password = "Password wajib diisi";
+  } else if (formData.password.length < 8) {
+    newErrors.password = "Password minimal 8 karakter";
+  }
+
+  setErrors(newErrors);
+
+  return Object.keys(newErrors).length === 0;
+};
 
   const handleSubmit = async () => {
 
@@ -123,7 +156,10 @@ export default function OwnerRegisterScreen({ navigation }) {
       {/* ================= NAMA ================= */}
       <TextInput
         placeholder="Nama Lengkap"
-        style={styles.input}
+       style={[
+  styles.input,
+  errors.nama && styles.inputError,
+]}
         value={formData.nama}
         onChangeText={(val) =>
           handleInputChange('nama', val)
@@ -139,7 +175,10 @@ export default function OwnerRegisterScreen({ navigation }) {
       {/* ================= EMAIL ================= */}
       <TextInput
         placeholder="Email"
-        style={styles.input}
+       style={[
+  styles.input,
+  errors.email && styles.inputError,
+]}
         value={formData.email}
         keyboardType="email-address"
         autoCapitalize="none"
@@ -157,7 +196,10 @@ export default function OwnerRegisterScreen({ navigation }) {
       {/* ================= NO HP ================= */}
       <TextInput
         placeholder="Nomor HP"
-        style={styles.input}
+        style={[
+  styles.input,
+  errors.no_hp && styles.inputError,
+]}
         value={formData.no_hp}
         keyboardType="phone-pad"
         onChangeText={(val) =>
@@ -172,7 +214,12 @@ export default function OwnerRegisterScreen({ navigation }) {
       ) : null}
 
       {/* ================= PASSWORD ================= */}
-      <View style={styles.passwordContainer}>
+      <View
+  style={[
+    styles.passwordContainer,
+    errors.password && styles.inputError,
+  ]}
+>
 
         <TextInput
           placeholder="Password"
@@ -262,6 +309,9 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 5,
   },
+  inputError: {
+  borderColor: "#E53935",
+},
 
   passwordContainer: {
     width: "100%",
