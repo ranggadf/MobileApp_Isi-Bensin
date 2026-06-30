@@ -15,20 +15,27 @@
     "ios": {
       "supportsTablet": true
     },
-    "android": {
-      "package": "com.isibensin.app",
-      "googleServicesFile": "./google-services.json",
-      "usesCleartextTraffic": true,
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/logo.jpeg",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
-    },
+   "android": {
+  "package": "com.isibensin.app",
+  "googleServicesFile": "./google-services.json",
+  "usesCleartextTraffic": true,
+
+  "config": {
+    "googleMaps": {
+      "apiKey": "AIzaSyBh2fpY8PiLh0yaN9CCbe0r4FPxLGswczc"
+    }
+  },
+
+  "adaptiveIcon": {
+    "foregroundImage": "./assets/logo.jpeg",
+    "backgroundColor": "#ffffff"
+  },
+  "edgeToEdgeEnabled": true,
+  "permissions": [
+    "android.permission.RECORD_AUDIO",
+    "android.permission.MODIFY_AUDIO_SETTINGS"
+  ]
+},
     "web": {
       "favicon": "./assets/logo.jpeg"
     },

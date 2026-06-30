@@ -23,36 +23,33 @@ export default function MapsScreen() {
         <Text style={styles.backText}>← Kembali</Text>
       </TouchableOpacity>
 
-      <MapView
-        style={styles.map}
-        initialRegion={{
-          latitude: -7.6297, // Kota Madiun
-          longitude: 111.5231,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
-        }}
-      >
-        {/* Tile OpenTopoMap */}
-        <UrlTile
-          urlTemplate="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png"
-          maximumZ={17}
-          flipY={false}
-          subdomains={["a", "b", "c"]}
-        />
+     <MapView
+  style={styles.map}
+  mapType="none"
+  initialRegion={{
+    latitude: -7.6297,
+    longitude: 111.5231,
+    latitudeDelta: 0.05,
+    longitudeDelta: 0.05,
+  }}
+>
+  <UrlTile
+    urlTemplate="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+    maximumZ={19}
+  />
 
-        {/* Marker warung */}
-        {warung.map((item) => (
-          <Marker
-            key={item.id}
-            coordinate={{
-              latitude: item.lat,
-              longitude: item.lng,
-            }}
-            title={item.nama}
-            description="Warung Bensin 24 Jam"
-          />
-        ))}
-      </MapView>
+  {warung.map((item) => (
+    <Marker
+      key={item.id}
+      coordinate={{
+        latitude: item.lat,
+        longitude: item.lng,
+      }}
+      title={item.nama}
+      description="Warung Bensin 24 Jam"
+    />
+  ))}
+</MapView>
     </View>
   );
 }
