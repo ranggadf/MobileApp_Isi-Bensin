@@ -40,13 +40,15 @@ export default function LoginScreen({ navigation }) {
     if (res.data.success) {
 
       // TOKEN LOGIN
-      const authToken = res.data.token;
+      // TOKEN LOGIN
+const authToken = res.data.token;
 
-      // SIMPAN TOKEN LOGIN
-      await AsyncStorage.setItem("token", authToken);
+// DATA USER
+const user = res.data.data;
 
-      // DATA USER
-      const user = res.data.data;
+// SIMPAN TOKEN DAN ROLE
+await AsyncStorage.setItem("token", authToken);
+await AsyncStorage.setItem("role", user.role.toString());
 
       // =========================
       // SIMPAN EXPO TOKEN

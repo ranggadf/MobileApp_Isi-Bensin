@@ -26,6 +26,9 @@ export default function PesananOwnerScreen() {
   const fetchOrders = async () => {
     try {
       const res = await api.get("/owner/orders");
+     
+
+
 
       // ❗ hanya tampilkan order aktif (hapus selesai dari list)
       const filtered = Array.isArray(res.data)
@@ -115,11 +118,11 @@ export default function PesananOwnerScreen() {
          No HP: {order.no_hp || "-"}
         </Text>
 
-        <Text style={styles.text}>
-          BBM: {(order.items || [])
-            .map((i) => i.jenis_bbm)
-            .join(", ")}
-        </Text>
+       <Text style={styles.text}>
+  BBM: {(order.items || [])
+    .map((item) => `${item.jenis_bbm} (${item.qty} Liter)`)
+    .join(", ")}
+</Text>
 
         <Text style={styles.text}>
           Total: Rp {order.total_harga}

@@ -294,9 +294,21 @@ const handleCheckout = async () => {
     })),
   });
 
-  await api.delete("/cart-clear");
+  await api.post("/cart/remove-selected", {
+    ids: selectedData.map(item => item.id)
+});
 
-  setCart([]);
+  setCart(prev =>
+    prev.filter(
+        item => !selectedData.some(
+            selected => selected.id === item.id
+        )
+    )
+);
+
+setSelectedItems([]);
+
+loadCartGlobal();
   loadCartGlobal();
   setSelectedItems([]);
 
