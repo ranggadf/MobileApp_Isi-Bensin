@@ -8,6 +8,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 
 // safe area (biar tidak ketutup notch)
@@ -40,6 +41,8 @@ export default function KeranjangScreen() {
   const [selectedItems, setSelectedItems] = useState([]); // item yang dipilih
   const [userLocation, setUserLocation] = useState(null); // lokasi user GPS
   const [distance, setDistance] = useState(0); // jarak ke warung
+const [loadingCheckout, setLoadingCheckout] = useState(false);
+const [loadingText, setLoadingText] = useState("Memproses pesanan...");
 
   const navigation = useNavigation();
 
@@ -228,64 +231,81 @@ export default function KeranjangScreen() {
   // =========================
   // 🔥 VALIDASI CHECKOUT
   // =========================
-  const canCheckout =
-    selectedItems.length > 0 && userLocation && distance > 0;
+ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+ const confirmCheckout = () => {
+  Alert.alert(
+    "Konfirmasi Checkout",
+    "Apakah Anda yakin ingin melakukan checkout pesanan ini?",
+    [
+      {
+        text: "Batal",
+        style: "cancel",
+      },
+      {
+        text: "Ya",
+        onPress: handleCheckout,
+      },
+    ],
+    { cancelable: true }
+  );
+};
 
+const handleCheckout = async () => {
+  try {
+    setLoadingCheckout(true);
 
-  // =========================
-  // 🔥 KONFIRMASI CHECKOUT
-  // =========================
-  const handleCheckout = async () => {
-    if (!canCheckout) return;
+    setLoadingText("Mengirim pesanan...");
+    await delay(1000);
 
-    Alert.alert("Konfirmasi", "Lanjut checkout?", [
-      { text: "Batal" },
-      { text: "Ya", onPress: () => processCheckout() },
-    ]);
-  };
+    await processCheckout();
 
+    setLoadingText("Pesanan berhasil dibuat...");
+    await delay(1000);
 
+    Alert.alert("Sukses", "Pesanan berhasil dibuat!");
+
+    navigation.navigate("PesananScreen");
+  } catch (error) {
+    console.log(error);
+    Alert.alert("Gagal", "Checkout gagal.");
+  } finally {
+    setLoadingCheckout(false);
+  }
+};
   // =========================
   // 🔥 PROSES CHECKOUT KE BACKEND
   // =========================
   const processCheckout = async () => {
-    try {
 
-      const selectedData = selectedItems.map((i) => cart[i]);
+  const selectedData = selectedItems.map((i) => cart[i]);
 
-      // kirim order ke Laravel
-      await api.post("/orders", {
-        total_harga: getGrandTotal(),
-        ongkir: getOngkir(),
-        jarak: distance,
-        warung_id: selectedData[0].warung_id,
-        lat: userLocation.latitude,
-        lng: userLocation.longitude,
+  await api.post("/orders", {
+    total_harga: getGrandTotal(),
+    ongkir: getOngkir(),
+    jarak: distance,
+    warung_id: selectedData[0].warung_id,
+    lat: userLocation.latitude,
+    lng: userLocation.longitude,
 
-        // kirim item yang dibeli
-        items: selectedData.map((item) => ({
-          jenis_bbm: item.jenis_bbm,
-          qty: item.qty,
-          harga: item.harga,
-        })),
-      });
+    items: selectedData.map((item) => ({
+      jenis_bbm: item.jenis_bbm,
+      qty: item.qty,
+      harga: item.harga,
+    })),
+  });
 
-      // kosongkan cart setelah checkout
-      await api.delete("/cart-clear");
+  await api.delete("/cart-clear");
 
-      setCart([]);
-      loadCartGlobal();
-      setSelectedItems([]);
+  setCart([]);
+  loadCartGlobal();
+  setSelectedItems([]);
 
-      Alert.alert("Sukses", "Pesanan berhasil dibuat!");
-      navigation.navigate("PesananScreen");
-
-    } catch (error) {
-      console.log(error);
-      Alert.alert("Error", "Checkout gagal");
-    }
-  };
-
+  
+};
+const canCheckout =
+  selectedItems.length > 0 &&
+  userLocation &&
+  distance > 0;
   // ================== RENDER ITEM ==================
   const renderItem = ({ item, index }) => {
     const isSelected = selectedItems.includes(index);
@@ -369,12 +389,18 @@ export default function KeranjangScreen() {
               <Text style={styles.metode}>Metode Pembayaran: COD</Text>
 
               {canCheckout ? (
-                <TouchableOpacity
-                  style={styles.checkoutBtn}
-                  onPress={handleCheckout}
-                >
-                  <Text style={styles.checkoutText}>Checkout</Text>
-                </TouchableOpacity>
+      <TouchableOpacity
+    style={[
+        styles.checkoutButton,
+        loadingCheckout && { opacity: 0.7 }
+    ]}
+    disabled={loadingCheckout}
+   onPress={confirmCheckout}
+>
+    <Text style={styles.checkoutText}>
+        {loadingCheckout ? "Memproses..." : "Checkout"}
+    </Text>
+</TouchableOpacity>
               ) : (
                 <View style={styles.checkoutDisabled}>
                   <Text style={styles.checkoutDisabledText}>
@@ -386,6 +412,16 @@ export default function KeranjangScreen() {
           )}
         </View>
       </View>
+{loadingCheckout && (
+  <View style={styles.loadingOverlay}>
+    <ActivityIndicator size="large" color="#fff" />
+
+    <Text style={styles.loadingText}>
+      {loadingText}
+    </Text>
+  </View>
+)}
+
 
       <CustomerBottomNav />
     </SafeAreaView>
@@ -458,4 +494,47 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 13,
   },
+  checkoutButton: {
+  backgroundColor: "#2563EB",
+  padding: 14,
+  borderRadius: 10,
+  alignItems: "center",
+  marginTop: 10,
+},
+loadingOverlay: {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.6)",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 999,
+},
+
+loadingText: {
+  color: "#fff",
+  marginTop: 15,
+  fontSize: 18,
+  fontWeight: "bold",
+},
+loadingOverlay: {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.55)",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 9999,
+},
+
+loadingText: {
+  marginTop: 20,
+  color: "#fff",
+  fontSize: 18,
+  fontWeight: "bold",
+},
 });

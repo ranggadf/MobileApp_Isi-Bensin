@@ -10,7 +10,13 @@ import {
 } from "react-native";
 
 // komponen map (Google Maps / Apple Maps)
-import MapView, { Marker, Polyline } from "react-native-maps";
+import {
+  Map,
+  Camera,
+  Marker,
+  GeoJSONSource,
+  Layer,
+} from "@maplibre/maplibre-react-native";
 
 // library untuk ambil lokasi GPS
 import * as Location from "expo-location";
@@ -31,7 +37,7 @@ export default function RouteMapsScreen() {
   // =========================
   const route = useRoute(); // akses parameter route
   const navigation = useNavigation(); // navigasi antar halaman
-  const mapRef = useRef(null); // referensi map (untuk animasi kamera)
+ const cameraRef = useRef(null); // referensi map (untuk animasi kamera)
 
   // data warung dikirim dari screen sebelumnya
   const { warung } = route.params;
@@ -51,8 +57,18 @@ export default function RouteMapsScreen() {
   // 🔥 JALANKAN SAAT HALAMAN DIBUKA
   // =========================
   useEffect(() => {
-    startTracking(); // mulai tracking GPS
-  }, []);
+    let subscription;
+
+    const init = async () => {
+        subscription = await startTracking();
+    };
+
+    init();
+
+    return () => {
+        subscription?.remove();
+    };
+}, []);
 
 
   // =========================
@@ -63,10 +79,11 @@ export default function RouteMapsScreen() {
     // minta izin akses lokasi ke user
     let { status } = await Location.requestForegroundPermissionsAsync();
 
-    if (status !== "granted") {
-      alert("GPS harus diaktifkan");
-      return;
-    }
+   if (status !== "granted") {
+    alert("GPS harus diaktifkan");
+    setLoading(false);
+    return;
+}
 
     // ambil posisi awal user
     let loc = await Location.getCurrentPositionAsync({});
@@ -82,7 +99,7 @@ export default function RouteMapsScreen() {
     // =========================
     // 🔥 REALTIME TRACKING (bergerak terus)
     // =========================
-    Location.watchPositionAsync(
+    const subscription = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.High, // akurasi tinggi
         timeInterval: 3000, // update tiap 3 detik
@@ -100,14 +117,17 @@ export default function RouteMapsScreen() {
         getRoute(coords);
 
         // pindahkan kamera map mengikuti user
-        mapRef.current?.animateToRegion({
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        });
+      cameraRef.current?.setCamera({
+    centerCoordinate: [
+        coords.longitude,
+        coords.latitude,
+    ],
+    zoomLevel: 15,
+    animationDuration: 1000,
+});
       }
     );
+    return subscription;
   };
 
 
@@ -121,7 +141,8 @@ export default function RouteMapsScreen() {
       const start = `${coords.longitude},${coords.latitude}`;
 
       // titik tujuan (warung)
-      const end = `${warung.longitude},${warung.latitude}`;
+      const end =
+`${parseFloat(warung.longitude)},${parseFloat(warung.latitude)}`;
 
       // API routing OSRM (gratis open source)
       const url =
@@ -129,7 +150,9 @@ export default function RouteMapsScreen() {
 
       // request ke API
       const res = await axios.get(url);
-
+if (!res.data.routes || res.data.routes.length === 0) {
+    return;
+}
       // ambil data rute pertama
       const data = res.data.routes[0];
 
@@ -173,47 +196,97 @@ export default function RouteMapsScreen() {
     <SafeAreaView style={styles.container}>
 
       {/* MAP UTAMA */}
-      <MapView
-        ref={mapRef}
-        style={styles.map}
+ <Map
+    style={styles.map}
+    mapStyle="https://tiles.openfreemap.org/styles/liberty/style.json"
+    compassEnabled
+    rotateEnabled
+    zoomEnabled
+    scrollEnabled
+    pitchEnabled
+>
 
-        // posisi awal map
-        initialRegion={{
-          latitude: location.latitude,
-          longitude: location.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
+    {/* CAMERA */}
+    <Camera
+        ref={cameraRef}
+        zoomLevel={15}
+        centerCoordinate={[
+            location.longitude,
+            location.latitude,
+        ]}
+        animationMode="flyTo"
+        animationDuration={0}
+    />
+
+    {/* MARKER USER */}
+    <Marker
+        id="user"
+        anchor={{ x: 0.5, y: 0.5 }}
+        coordinate={[
+            location.longitude,
+            location.latitude,
+        ]}
+    >
+        <View
+            style={{
+                width: 18,
+                height: 18,
+                backgroundColor: "blue",
+                borderRadius: 9,
+                borderWidth: 2,
+                borderColor: "#fff",
+            }}
+        />
+    </Marker>
+
+    {/* MARKER WARUNG */}
+    <Marker
+        id="warung"
+        anchor={{ x: 0.5, y: 0.5 }}
+        coordinate={[
+            parseFloat(warung.longitude),
+            parseFloat(warung.latitude),
+        ]}
+    >
+        <View
+            style={{
+                width: 18,
+                height: 18,
+                backgroundColor: "red",
+                borderRadius: 9,
+                borderWidth: 2,
+                borderColor: "#fff",
+            }}
+        />
+    </Marker>
+
+    {/* GARIS RUTE */}
+   {routeCoords.length > 1 && (
+<GeoJSONSource
+    id="route"
+    shape={{
+        type:"Feature",
+        geometry:{
+            type:"LineString",
+            coordinates:routeCoords.map(p=>[
+                p.longitude,
+                p.latitude,
+            ]),
+        },
+    }}
+>
+    <Layer
+        id="route-line"
+        type="line"
+        paint={{
+            "line-color":"#2563EB",
+            "line-width":5,
         }}
-      >
+    />
+</GeoJSONSource>
+)}
 
-        {/* 🔵 MARKER USER */}
-        <Marker
-          coordinate={{
-            latitude: location.latitude,
-            longitude: location.longitude,
-          }}
-          title="Lokasi Anda"
-          pinColor="blue"
-        />
-
-        {/* 🔴 MARKER WARUNG */}
-        <Marker
-          coordinate={{
-            latitude: parseFloat(warung.latitude),
-            longitude: parseFloat(warung.longitude),
-          }}
-          title={warung.nama_warung}
-          pinColor="red"
-        />
-
-        {/* 🔵 GARIS RUTE */}
-        <Polyline
-          coordinates={routeCoords}
-          strokeWidth={5}
-          strokeColor="#2563EB"
-        />
-
-      </MapView>
+</Map>
 
 
       {/* INFO JARAK & WAKTU */}

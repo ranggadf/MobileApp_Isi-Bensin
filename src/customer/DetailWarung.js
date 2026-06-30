@@ -13,7 +13,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Ionicons } from "@expo/vector-icons";
-
+import { Linking } from "react-native";
 import { useCart } from "../component/CartContext";
 
 import CustomerBottomNav from "../component/CustomerBottomNav";
@@ -96,9 +96,21 @@ export default function DetailWarungScreen() {
 
           <TouchableOpacity
             style={styles.routeButton}
-            onPress={() =>
-              navigation.navigate("RouteMapsScreen", { warung })
-            }
+            onPress={() => {
+  const lat = warung.latitude;
+  const lng = warung.longitude;
+
+  if (!lat || !lng) {
+    Alert.alert("Error", "Lokasi warung tidak tersedia");
+    return;
+  }
+
+  const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+
+  Linking.openURL(url).catch(() =>
+    Alert.alert("Error", "Tidak bisa membuka Google Maps")
+  );
+}}
           >
             <Ionicons name="navigate-outline" size={20} color="#fff" />
             <Text style={styles.routeText}>Lihat Rute</Text>

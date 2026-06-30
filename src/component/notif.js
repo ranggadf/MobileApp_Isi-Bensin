@@ -22,7 +22,7 @@ export async function registerForPushNotificationsAsync() {
       await Notifications.setNotificationChannelAsync("default", {
         name: "default",
         importance: Notifications.AndroidImportance.MAX,
-        sound: "default",
+        sound: "alarm",
         enableLights: true,
         enableVibrate: true,
         vibrationPattern: [0, 250, 250, 250],

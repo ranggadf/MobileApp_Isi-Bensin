@@ -135,7 +135,7 @@ export default function PesananOwnerScreen() {
           <View style={styles.buttonRow}>
             <TouchableOpacity
               style={styles.rejectBtn}
-              onPress={() => updateStatus(order.id, "expired")}
+              onPress={() => updateStatus(order.id, "ditolak")}
             >
               <Text style={styles.btnText}>Tolak</Text>
             </TouchableOpacity>

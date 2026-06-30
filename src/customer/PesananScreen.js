@@ -36,9 +36,9 @@ export default function PesananScreen() {
         const prev = prevOrders.current.find((o) => o.id === order.id);
 
         const isNewExpired =
-          status === "expired" &&
-          prev &&
-          prev.status?.toLowerCase() !== "expired";
+  status === "expired" &&
+  prev &&
+  prev.status?.toLowerCase() === "pending";
 
         if (isNewExpired && !alertedOrders.current.has(order.id)) {
           alertedOrders.current.add(order.id);
