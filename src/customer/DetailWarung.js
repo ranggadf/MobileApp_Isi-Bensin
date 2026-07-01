@@ -80,7 +80,7 @@ export default function DetailWarungScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: 120 }}>
         <Image
           source={{
-            uri: `http://192.168.1.7:8000/storage/${warung.foto}`,
+            uri: `http://192.168.1.6:8000/storage/${warung.foto}`,
           }}
           style={styles.image}
         />

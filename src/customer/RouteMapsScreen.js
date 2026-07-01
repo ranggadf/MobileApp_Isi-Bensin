@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
-
+import { Image } from "react-native";
 import MapView, { Marker, Polyline, UrlTile } from "react-native-maps";
 import * as Location from "expo-location";
 import axios from "axios";
@@ -138,20 +138,30 @@ export default function RouteMapsScreen() {
         />
 
         {/* USER MARKER */}
-        <Marker coordinate={location} title="Posisi Anda">
-          <View style={styles.userDot} />
-        </Marker>
+       {/* MARKER USER */}
+<Marker
+  coordinate={location}
+  title="Posisi Anda"
+  anchor={{ x: 0.5, y: 0.5 }}
+>
+  <Image
+    source={require("../../assets/custom.png")}
+    style={styles.ownerIcon}
+    resizeMode="contain"
+    style={{ width: 50, height: 50 }}
+  />
+</Marker>
 
-        {/* WARUNG MARKER */}
-        <Marker
-          coordinate={{
-            latitude: parseFloat(warung.latitude),
-            longitude: parseFloat(warung.longitude),
-          }}
-          title="Warung"
-        >
-          <View style={styles.warungDot} />
-        </Marker>
+{/* MARKER WARUNG */}
+<Marker
+  coordinate={{
+    latitude: parseFloat(warung.latitude),
+    longitude: parseFloat(warung.longitude),
+  }}
+  title="Warung"
+  pinColor="red"
+
+/>
 
         {/* ROUTE LINE */}
         {routeCoords.length > 1 && (
@@ -164,22 +174,34 @@ export default function RouteMapsScreen() {
       </MapView>
 
       {/* INFO PANEL */}
-      <View style={styles.infoBox}>
-        <Text style={styles.infoText}>
-          Jarak: {distance} km
-        </Text>
+      <View style={styles.estimateBox}>
+  <Text style={styles.estimateTitle}>
+    Estimasi Perjalanan
+  </Text>
 
-        <Text style={styles.infoText}>
-          Estimasi: {duration} menit
-        </Text>
+  <View style={styles.row}>
+    <Text style={styles.label}>Jarak</Text>
+    <Text style={styles.value}>
+      {distance} km
+    </Text>
+  </View>
 
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={{ color: "#fff" }}>Kembali</Text>
-        </TouchableOpacity>
-      </View>
+  <View style={styles.row}>
+    <Text style={styles.label}>Estimasi</Text>
+    <Text style={styles.value}>
+      {duration} menit
+    </Text>
+  </View>
+
+  <TouchableOpacity
+    style={styles.backButton}
+    onPress={() => navigation.goBack()}
+  >
+    <Text style={styles.backButtonText}>
+      Kembali
+    </Text>
+  </TouchableOpacity>
+</View>
     </SafeAreaView>
   );
 }
@@ -194,39 +216,79 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  userDot: {
-    width: 16,
-    height: 16,
-    backgroundColor: "blue",
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
+  estimateBox: {
+  position: "absolute",
+  left: 20,
+  right: 20,
+  bottom: 30,
+  backgroundColor: "#FFFFFF",
+  borderRadius: 15,
+  padding: 16,
 
-  warungDot: {
-    width: 16,
-    height: 16,
-    backgroundColor: "red",
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
+  elevation: 8,
 
-  infoBox: {
-    position: "absolute",
-    bottom: 30,
-    left: 20,
-    right: 20,
-    backgroundColor: "#fff",
-    padding: 15,
-    borderRadius: 10,
-    elevation: 5,
+  shadowColor: "#000",
+  shadowOpacity: 0.15,
+  shadowRadius: 8,
+  shadowOffset: {
+    width: 0,
+    height: 3,
   },
+},
 
-  infoText: {
-    fontSize: 16,
-    marginBottom: 4,
-  },
+estimateTitle: {
+  fontSize: 18,
+  fontWeight: "bold",
+  color: "#111827",
+  marginBottom: 12,
+},
+ownerIcon: {
+   width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#2563EB",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+},
+
+destinationIcon: {
+  width: 45,
+  height: 45,
+},
+
+row: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 10,
+},
+
+label: {
+  fontSize: 15,
+  color: "#6B7280",
+},
+
+
+
+value: {
+  fontSize: 16,
+  fontWeight: "bold",
+  color: "#2563EB",
+},
+
+backButton: {
+  marginTop: 15,
+  backgroundColor: "#2563EB",
+  borderRadius: 10,
+  paddingVertical: 12,
+  alignItems: "center",
+},
+
+backButtonText: {
+  color: "#FFFFFF",
+  fontWeight: "bold",
+  fontSize: 16,
+},
 
   backButton: {
     marginTop: 10,

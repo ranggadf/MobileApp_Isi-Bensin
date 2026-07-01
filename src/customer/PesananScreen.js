@@ -6,13 +6,16 @@ import {
   FlatList,
   ActivityIndicator,
   Alert,
+  TouchableOpacity,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { useNavigation } from "@react-navigation/native";
 import api from "../api/AxiosInstance";
 import CustomerBottomNav from "../component/CustomerBottomNav";
 
 export default function PesananScreen() {
+
+  const navigation = useNavigation();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -105,6 +108,7 @@ export default function PesananScreen() {
   const renderItem = ({ item }) => {
     const label = getStatusLabel(item.status);
     const color = getStatusColor(item.status);
+    
 
     return (
       <View style={styles.card}>
@@ -125,6 +129,20 @@ export default function PesananScreen() {
         <Text style={[styles.status, { color }]}>
           Status: {label}
         </Text>
+        {item.status?.toLowerCase() === "sedang diantar" && (
+  <TouchableOpacity
+    style={styles.trackButton}
+    onPress={() =>
+      navigation.navigate("CustomerTracking", {
+        orderId: item.id,
+      })
+    }
+  >
+    <Text style={styles.trackButtonText}>
+      Lihat Pengiriman
+    </Text>
+  </TouchableOpacity>
+)}
       </View>
     );
   };
@@ -159,6 +177,19 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F1F5F9",
   },
+
+  trackButton: {
+  marginTop: 12,
+  backgroundColor: "#2563EB",
+  paddingVertical: 10,
+  borderRadius: 8,
+  alignItems: "center",
+},
+
+trackButtonText: {
+  color: "#fff",
+  fontWeight: "bold",
+},
 
   title: {
     fontSize: 22,

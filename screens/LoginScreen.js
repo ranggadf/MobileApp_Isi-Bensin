@@ -61,7 +61,7 @@ await AsyncStorage.setItem("role", user.role.toString());
         console.log("EXPO TOKEN:", expoToken);
 
         await axios.post(
-    "http://192.168.1.7:8000/api/save-expo-token",
+    "http://192.168.1.6:8000/api/save-expo-token",
           {
             user_id: user.id,
             expo_token: expoToken,

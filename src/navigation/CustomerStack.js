@@ -1,6 +1,6 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-
+import TrackingPengiriman from "../customer/TrackingPengiriman";
 import DashboardCustomer from "../customer/DashboardCustomer";
 import KeranjangScreen from "../customer/KeranjangScreen";
 import PesananScreen from "../customer/PesananScreen";
@@ -22,6 +22,7 @@ export default function CustomerStack() {
       <Stack.Screen name="DetailWarung" component={DetailWarung} />
       <Stack.Screen name="MapsScreen" component={MapsScreen} />
       <Stack.Screen name="RouteMapsScreen" component={RouteMapsScreen} />
+      <Stack.Screen name="CustomerTracking"component={TrackingPengiriman}/>
     </Stack.Navigator>
   );
 }

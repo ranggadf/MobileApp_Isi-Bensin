@@ -21,7 +21,7 @@ import api from "../api/AxiosInstance";
 
 
 // base URL untuk gambar dari backend Laravel
-const BASE_URL = "http://192.168.1.7:8000";
+const BASE_URL = "http://192.168.1.6:8000";
 
 export default function DashboardCustomerScreen() {
 
